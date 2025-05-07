@@ -5,6 +5,7 @@
     import "./default.style.css"
   import InferencePage from "./inference/InferencePage.svelte";
 	import TiffViewer from "./inference/TiffViewer.svelte";
+	import AvailableModels from "./models/AvailableModels.svelte";
     let currentTheme = $state("light")
     
     const toggle_theme = ()=>{
@@ -84,4 +85,5 @@
   <WelcomePage/>
   <InferencePage/>
   <!-- <TiffViewer/> -->
+  <AvailableModels/> 
 </main>

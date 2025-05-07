@@ -86,7 +86,6 @@
 </script>
 
 <div class="container py-4">
-	<h3 class="mb-3">TIFF Viewer</h3>
 
 	<div class="mb-3">
 		<label class="form-label">Upload a TIFF File</label>
@@ -106,7 +105,9 @@
 			/>
 		</div>
 	{/if}
-
-	<canvas bind:this={canvasEl} id="image_preview" class="border shadow-sm"></canvas>
-	<canvas id="canvas2" class="border shadow-sm"></canvas>
+	<div style="overflow-x: scroll;">
+		<canvas bind:this={canvasEl} id="image_preview" class="border shadow-sm"></canvas>
+		<!-- <canvas id="canvas2" class="border shadow-sm"></canvas> -->
+	</div>
+	
 </div>

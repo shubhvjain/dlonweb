@@ -1,7 +1,22 @@
 <script>
 	import TiffViewer from "./TiffViewer.svelte";
-
+  import {get_models_list}  from "$lib/dlonweb/models"
+  import {get_input_types} from "$lib/dlonweb/io"
+	import { onMount } from "svelte";
+  let model_list = $state([])
+  let model_data = $state({})
+  let input_list =$state([])
+  let loaded = $state(false)
+  onMount(()=>{
+    let data = get_models_list()
+    model_list = data.list
+    model_data  = data.details
+    //console.log(model_list)
+    input_list = get_input_types()
+    loaded =  true
+  })
 </script>
+{#if loaded}
 <div class="p-2 p-md-4 mb-4 rounded border">
   <div class="col-lg-12 px-0">
     <h3 class="border-bottom">Inference</h3>
@@ -11,20 +26,20 @@
         <h5>Model Selection</h5>
         <select class="form-select form-select-lg mt-2 mb-2" aria-label="Model type selection">
           <option selected>Select a model</option>
-          <option value="1">Image Segmentation using U-net</option>
-          <option value="2">Object Detection</option>
-          <option value="3">Use Your Own Tensorflow Model</option>
+          {#each model_list as model }
+            <option value="{model.value}">{model.name}</option>   
+          {/each}
+          <option value="custom">Use Your Own Tensorflow Model</option>
         </select>
       </div>
     
       <div class="p-2">
         <h5>Input selection</h5>
         <select class="form-select form-select-lg mt-2 mb-2" aria-label="Input type selection ">
-          <option selected>Select input type</option>
-          <option value="0">Text</option>
-          <option value="1">Image(s)</option>
-          <option value="2">Video</option>
-          <option value="3">Microscopy stack</option>
+          <option selected value="">Select input type</option>
+          {#each input_list as ip }
+          <option value="{ip.value}">{ip.name}</option>   
+        {/each}
         </select>
       </div>
     
@@ -36,3 +51,4 @@
     <TiffViewer/> 
   </div>
 </div>
+{/if}
