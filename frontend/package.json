@@ -25,6 +25,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",
-		"bootstrap": "^5.3.6"
+		"bootstrap": "^5.3.6",
+		"geotiff": "^2.1.3"
 	}
 }
