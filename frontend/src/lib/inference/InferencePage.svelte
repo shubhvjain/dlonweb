@@ -1,3 +1,7 @@
+<script>
+	import TiffViewer from "./TiffViewer.svelte";
+
+</script>
 <div class="p-2 p-md-4 mb-4 rounded border">
   <div class="col-lg-12 px-0">
     <h3 class="border-bottom">Inference</h3>
@@ -29,5 +33,6 @@
         <button class="btn btn-lg btn-primary mt-2 mb-2">Run</button>
       </div>
     </div>
+    <TiffViewer/> 
   </div>
 </div>

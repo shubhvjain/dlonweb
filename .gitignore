@@ -8,6 +8,8 @@ node_modules
 .svelte-kit
 build
 
+test_models
+
 # OS
 .DS_Store
 Thumbs.db
@@ -23,3 +25,36 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 .DS_Store
+
+
+# === Python ===
+backend/__pycache__/
+backend/**/*.py[cod]
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.coverage
+backend/.cache/
+backend/.env
+backend/.venv/
+backend/env/
+backend/venv/
+backend/.DS_Store
+
+# === Poetry Virtual Env (if created locally) ===
+# If you use `poetry config virtualenvs.in-project true`
+backend/.venv/
+
+# === Logs and Output ===
+backend/*.log
+
+# === VS Code / Editors ===
+.vscode
+.idea
+
+# === PyInstaller ===
+backend/dist/
+backend/build/
+
+# === OS files ===
+Thumbs.db
