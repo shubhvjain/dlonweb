@@ -3,9 +3,9 @@
     import { onMount } from "svelte";
     import WelcomePage from "./WelcomePage.svelte";
     import "./default.style.css"
-  import InferencePage from "./inference/InferencePage.svelte";
-	import TiffViewer from "./inference/TiffViewer.svelte";
-	import AvailableModels from "./models/AvailableModels.svelte";
+  import InferencePage from "./InferencePage.svelte";
+	import TiffViewer from "./TiffViewer.svelte";
+	import AvailableModels from "./AvailableModels.svelte";
     let currentTheme = $state("light")
     
     const toggle_theme = ()=>{

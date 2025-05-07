@@ -88,13 +88,13 @@
 <div class="container py-4">
 
 	<div class="mb-3">
-		<label class="form-label">Upload a TIFF File</label>
+		<label for="" class="form-label">Upload a TIFF File</label>
 		<input class="form-control" type="file" accept=".tif,.tiff" onchange={handleFileChange} />
 	</div>
 
 	{#if imageCount > 1}
 		<div class="mb-3">
-			<label class="form-label">Page: {currentPage + 1} / {imageCount}</label>
+			<label for="" class="form-label">Page: {currentPage + 1} / {imageCount}</label>
 			<input
 				type="range"
 				min="0"
