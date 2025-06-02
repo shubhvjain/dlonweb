@@ -1,5 +1,15 @@
 {
   "projects":{
+    "dlonweb":{
+      "title_short":"Demo",
+      "title":"Demos to show features of DLonWeb",
+      "models":{
+        "classify":{
+          "type":"image_classification",
+          "title":"Image classification using "
+        }
+      }
+    },
     "deepd3": {
       "title_short": "DeepD3",
       "title": "DeepD3 (A Deep Learning Framework for Detection of Dendritic Spines and Dendrites)",
@@ -10,16 +20,20 @@
       "model_output":"Segmented stack with dendrites and dendritic spines",
       "models": {
         "8f": {
+          "type":"image_segmentation",
           "title": "Dendritic spine image segmentation for 8 base filters",
           "input_type": "tiff",
+          "input_help":"",
           "output_type": "tiff",
-          "model_path": ""
+          "model_path": "models/DeepD3_8F"
         },
         "16f": {
+          "type":"image_segmentation",
           "title": "Dendritic spine image segmentation for 16 base filters",
           "input_type": "tiff"
         },
           "32f": {
+          "type":"image_segmentation",
           "title": "Dendritic spine image segmentation for 32 base filters",
           "input_type": "tiff"
         }

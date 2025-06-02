@@ -1,4 +1,6 @@
 <script>
-  import Workspace from "$lib/Workspace.svelte";
+  import WelcomePage from "$lib/WelcomePage.svelte";
 </script>
-<Workspace/>
+
+<WelcomePage/>
+

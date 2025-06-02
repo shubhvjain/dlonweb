@@ -36,7 +36,7 @@
   <div class="col-lg-12 px-0">
     <h3 class="border-bottom">Inference</h3>
 
-    { JSON.stringify(selection,null,2)}
+    <!-- {JSON.stringify(selection,null,2)} -->
 
     <div class="pt-2 mt-2 mb-2 pb-2 d-flex justify-content-center">
       <div class="p-2">
@@ -76,7 +76,7 @@
         <button class="btn btn-lg btn-primary mt-2 mb-2">Run</button>
       </div>
     </div>
-    <!-- <TiffViewer/>  -->
+    <TiffViewer/> 
   </div>
 </div>
 {/if}
