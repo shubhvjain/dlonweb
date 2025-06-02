@@ -58,3 +58,6 @@ backend/build/
 
 # === OS files ===
 Thumbs.db
+
+notes
+dist

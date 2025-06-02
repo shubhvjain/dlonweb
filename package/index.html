@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Simple DL on the Web</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .imageContainer {
+        width: 700px; /* Full viewport width */
+        overflow-x: auto; /* Enable horizontal scroll */
+        white-space: nowrap; /* Keep images in a single line */
+        border: 1px solid #ccc; /* Optional: just to see the boundaries */
+      }
+      .imageContainer img {
+        display: inline-block; /* Prevent line breaks between images */
+        padding: 5px;
+        margin: 5px;
+      }
+
+      summary {
+        /* background-color: #2196F3; */
+        /* color: white; */
+        /* padding: 10px; */
+        margin-bottom: 5px;
+        font-size: larger;
+      }
+
+      details {
+        background: #b1cadf;
+        /* margin: 10px; */
+        padding: 10px;
+        margin-bottom: 5px;
+      }
+
+      details[open] summary::after {
+        content: "";
+        display: block;
+        margin-top: 5px;
+        border-bottom: 1px solid #555; /* or any color you prefer */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container mt-3">
+      <h3>DL on the Web</h3>
+      <h4 class="border-bottom">Input</h4>
+      <details open>
+        <summary>Image</summary>
+        <label for="imageInput">Select an image:</label>
+        <input type="file" id="imageInput" accept="image/*" />
+        <button onclick="run1()">Run</button>
+        <div class="row mt-3" id="imageSection">
+          <div class="col">
+            <div id="originalImage"></div>
+            <!-- <img id="originalImage" style="max-width: 100%" /> -->
+          </div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Video</summary>
+
+        <p>Extract Video Frames</p>
+        <input type="file" id="videoInput" accept="video/*" />
+        <label for="fpsInput">FPS:</label>
+        <input type="number" id="fpsInput" value="10" min="1" max="30" />
+        <button id="extractBtn" onclick="run2()">Run</button>
+        <div id="videoPreview"></div>
+      </details>
+
+      <details>
+        <summary>Image stack</summary>
+      </details>
+      <br />
+      <h4 class="border-bottom">Inference</h4>
+      <details open>
+        <summary>Image Classification</summary>
+        <button onclick="run3()">Detect objects using cocoSsd</button>
+        <br />
+        <div id="detectImage1"></div>
+      </details>
+
+      <details open>
+        <summary>Use library models</summary>
+
+        Select a model :
+        <select id="modelSelect"></select> <br>
+<br>
+        <button id="getPathBtn" onclick="run4()">Run inference on selected image </button>
+        <br />
+        <div id="libinfer"></div>
+        <br> <br>
+        <button  onclick="run5()">Run inference on selected video </button>
+        <br>
+        <div id="libinfer1"></div>
+      </details>
+    </div>
+
+    <script type="module">
+      import {
+        load_input,
+        InferenceTask,
+        VideoFile,
+        BaseImage,
+        Library,
+      } from "./src/index.js";
+
+      let data = {
+        image: null,
+        video: null,
+        stack: null,
+      };
+
+      let results = {
+        one: null,
+        two: null,
+        three: null,
+      };
+
+      // Populate model list on page load
+      window.addEventListener("DOMContentLoaded", async () => {
+        const select = document.getElementById("modelSelect");
+        const models = await Library.get_model_list();
+
+        models.forEach((model) => {
+          const option = document.createElement("option");
+          option.value = model.value;
+          option.textContent = model.label;
+          select.appendChild(option);
+        });
+      });
+
+      window.run1 = async () => {
+        console.log(Math.random() * 1000);
+        let input = document.getElementById("imageInput");
+        let file = input.files[0];
+        if (file) {
+          data.image = await load_input(file);
+          showMedia(data.image, "originalImage");
+        } else {
+          alert("No file selected");
+        }
+        //console.log(input)
+      };
+
+      window.run2 = async () => {
+        console.log(Math.random() * 1000);
+        let input = document.getElementById("videoInput");
+        let fpsval = parseInt(document.getElementById("fpsInput").value);
+        let file = input.files[0];
+        if (file) {
+          data.video = await load_input(file, { fps: fpsval });
+          showMedia(data.video, "videoPreview");
+        } else {
+          alert("No file selected");
+        }
+      };
+
+      // run object classification on a simple image
+      window.run3 = async () => {
+        console.log(Math.random() * 1000);
+        results.one = null;
+        //console.log(data);
+        let task1 = new InferenceTask("classify_image", data.image);
+        await task1.load();
+        results.one = await task1.run();
+        console.log(results);
+        window.showMedia(results.one, "detectImage1");
+        console.log("done");
+        //detectImage1
+        //let detectImage = document.getElementById("detectImage");
+        //detectImage.src = results.one.toObjectURL();
+        //console.log(results);
+      };
+
+      // run image segmentation using Bagels model
+      window.run4 = async () => {
+        console.log(Math.random() * 1000);
+        const selectedModelValue = document.getElementById('modelSelect').value;
+        let task1 = new InferenceTask("segment_image", data.image,{libraryModelName:selectedModelValue});
+        await task1.load();
+        let image_ = await task1.run(); // libinfer
+        window.showMedia(image_, "libinfer");
+      };
+
+      window.run5 = async () => {
+        console.log(Math.random() * 1000);
+        const selectedModelValue = document.getElementById('modelSelect').value;
+        let task1 = new InferenceTask("segment_image", data.video,{libraryModelName:selectedModelValue});
+        await task1.load();
+        let video_ = await task1.run(); // libinfer
+        window.showMedia(video_, "libinfer1");
+      };
+
+      const showMedia = async (media, location) => {
+  const locationdiv = document.getElementById(location);
+  addClassIfMissing(locationdiv, "imageContainer");
+  locationdiv.innerHTML = "";
+
+  if (media instanceof BaseImage) {
+    const img = document.createElement("img");
+    img.src = media.toObjectURL();
+    locationdiv.appendChild(img);
+
+  } else if (media instanceof VideoFile) {
+    try {
+      // 1. Show the original video
+      const videoURL = URL.createObjectURL(media.file);
+      const videoEl = document.createElement("video");
+      videoEl.src = videoURL;
+      videoEl.controls = true;
+      videoEl.style.maxWidth = "100%";
+      locationdiv.appendChild(videoEl);
+
+      // 2. Add a divider or label for extracted frames
+      const labelFrames = document.createElement("div");
+      labelFrames.innerText = "Extracted Frames:";
+      labelFrames.style.marginTop = "10px";
+      locationdiv.appendChild(labelFrames);
+
+      // 3. Show each extracted frame as an image
+      for (const frame of media._frames) {
+        const img = document.createElement("img");
+        img.src = frame.toObjectURL();
+        img.style.maxWidth = "100%";
+        img.style.margin = "4px 0";
+        locationdiv.appendChild(img);
+      }
+
+      // 4. Add a divider or label for reconstructed video
+      // const labelReconstructed = document.createElement("div");
+      // labelReconstructed.innerText = "Reconstructed Video from Frames:";
+      // labelReconstructed.style.marginTop = "20px";
+      // locationdiv.appendChild(labelReconstructed);
+
+      // // 5. Convert frames to video and show it
+      // const reconstructedVideoURL = await media.convertFramesToVideo();
+      // const reconstructedVideoEl = document.createElement("video");
+      // reconstructedVideoEl.src = reconstructedVideoURL;
+      // reconstructedVideoEl.controls = true;
+      // reconstructedVideoEl.style.maxWidth = "100%";
+      // locationdiv.appendChild(reconstructedVideoEl);
+
+    } catch (err) {
+      console.error(err);
+      locationdiv.innerText = "Failed to load file: " + err.message;
+    }
+
+  } else if (media instanceof FileList) {
+    // Handle file list if needed
+  } else {
+    throw new Error("Invalid media type");
+  }
+};
+
+      window.showMedia = showMedia;
+
+      function addClassIfMissing(element, className) {
+  if (!element.classList.contains(className)) {
+    element.classList.add(className);
+  }
+}
+
+
+    </script>
+  </body>
+</html>
