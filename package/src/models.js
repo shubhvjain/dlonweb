@@ -2,8 +2,21 @@
 export class Library {
   static data = {
     "projects":{
+      "tf":{
+        "list":false,
+        "title_short":"Tensorflow",
+        "website":"https://cocodataset.org",
+        "models":{
+          "coco-ssd":{
+            "type":"object_detection",
+            "title":"Object Detection (coco-ssd)",
+            "path":""
+          }
+        }
+      },
       "deepd3": {
-        "title_short": "DeepD3",
+        "list":true,
+        "title_short": "DeepD3 ",
         "title": "DeepD3 (A Deep Learning Framework for Detection of Dendritic Spines and Dendrites)",
         "source":"Fernholz, M. H. P., Guggiana Nilo, D. A., Bonhoeffer, T., & Kist, A. M. (2024). DeepD3, an open framework for automated quantification of dendritic spines. In M. H. Hennig (Ed.), PLOS Computational Biology (Vol. 20, Issue 2, p. e1011774). Public Library of Science (PLoS). https://doi.org/10.1371/journal.pcbi.1011774",
         "description":"Pre trained models to perform semantic segmentation of dendrites and dendrite spines in microscopy data",
@@ -31,6 +44,7 @@ export class Library {
         }
       },
       "bagls":{
+        "list":true,
         "title_short":"BAGLS",
         "title":"Benchmark for Automatic Glottis Segmentation (BAGLS)",
         "source":"Gómez, P., Kist, A.M., Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3",
@@ -38,12 +52,8 @@ export class Library {
         "website":"https://www.bagls.org/",
         "models":{
           "segment":{
-            "title":"Segment Endoscopic Image",
-            "path":"library/bagls_rgb",
-            "options":{
-              "targetWidth": 256, 
-              "targetHeight": 256
-            }
+            "title":"Segment Endoscopic Image using BAGLS",
+            "path":"library/bagls_rgb"
           }
         }
       }
