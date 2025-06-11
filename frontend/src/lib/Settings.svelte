@@ -45,12 +45,11 @@
 </script>
 
 <div class="row">
-  <div class="col-lg-8 mx-auto">
-    <div class="card">
-      <div class="card-body">
-        <!-- <h5 class="card-title border-bottom pb-1">Backend server</h5>  -->
+	<div class="col-lg-8 mx-auto">
 
-        <label class="p-2" for="backend_url">Backend URL</label> 
+    <h5 class="text-xl font-semibold pb-2 border-bottom">Settings</h5>
+
+    <label class="p-2" for="backend_url">Backend URL</label> 
         <input type="text" name="backend_url" bind:value={settings.backendURL} class="form-control mb-3" placeholder="Enter backend URL" />
 
 
@@ -65,13 +64,7 @@
         {#if pingStatus}
           <p class="mt-3">{pingStatus}</p>
         {/if}
-
-        <!-- Add more setting fields here -->
-
-        
-      </div>
-    </div>
-    <br>
-    <button class="btn btn-primary mt-3" onclick={saveSettings}>Save Settings</button>
+        <br>
+        <button class="btn btn-primary mt-3" onclick={saveSettings}>Save Settings</button>
   </div>
 </div>

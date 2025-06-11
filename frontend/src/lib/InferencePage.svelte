@@ -4,11 +4,12 @@
 	import Input from './_Input.svelte';
 	import { Library } from 'dlonwebjs';
 	import InferenceTask from './_InferenceTask.svelte';
+	import Output from './_Output.svelte';
 
 	let modelList = $state([]);
 	let input = $state();
 	let model = $state();
-	let output = $state();
+	let outputs = $state([]);
 
 	let status = $state({
 		modelSelected: false,
@@ -22,6 +23,10 @@
 	onMount(async () => {
 			status.loaded = true
 	});
+
+	const appendOutputs = (op)=>{
+		outputs.push(op)
+	}
 </script>
 
 {#if status.loaded}
@@ -50,7 +55,7 @@
 			</div>
 			<div class="card text-center border  {status.model?" border-success-subtle ":" border-danger-subtle  "} " >
 				<div class="card-body">
-					<InferenceTask bind:model_valid={status.model} bind:model={model} model_name={modelName} input_valid={status.input}/>
+					<InferenceTask bind:model_valid={status.model} bind:model={model} model_name={modelName} input_valid={status.input} bind:input={input} on_emit_output={appendOutputs} />
 				</div>
 			</div>
 			<!-- <div class="card text-center">
@@ -64,6 +69,7 @@
 					{/if}
 				</div>
 			</div> -->
+			{#if outputs.length>0}
 			<div class="text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -78,16 +84,17 @@
 						d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"
 					/>
 				</svg>
-			</div>
-			<div class="card text-center">
-				<div class="card-body">
-					<h6 class="card-title border-bottom">Output</h6>
-					<p class="card-text">
-						Some quick example text to build on the card title and make up the bulk of the card’s
-						content.
-					</p>
-					<a href="#" class="btn btn-primary">Go somewhere</a>
-				</div>
+			</div>	
+			{/if}
+			<div class="row">
+				{#each outputs as out }
+				<div class="card text-center col-lg-12">
+					<div class="card-body">
+						<h6 class="card-title border-bottom">Output</h6>
+						<Output output={out} />
+					</div>
+				</div>	
+				{/each}
 			</div>
 		</div>
 	</div>

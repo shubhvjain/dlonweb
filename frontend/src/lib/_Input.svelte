@@ -1,8 +1,7 @@
 <!-- this is to read input or any kind from the user. it returns appropriate input class -->
  <script>
-	import Page from "../routes/+page.svelte";
   import {load_input} from "dlonwebjs"
-	import InputPreview from "./_InputPreview.svelte";
+	import Preview from "./_Preview.svelte";
  let  {input=$bindable(),input_valid=$bindable(false)} = $props()
  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
  let error = $state('');
@@ -75,6 +74,6 @@
   </div>
 {:else}
   {#if  input && input_valid}
-    <InputPreview input={input} />
+    <Preview input={input} />
   {/if}
 {/if}

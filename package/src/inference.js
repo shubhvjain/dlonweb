@@ -48,22 +48,26 @@ export class InferenceTask {
     }
     // load/validate model
     if (!this.model) {
-      throw new Error("No model input provided");
+      throw new Error("No model provided");
     }
 
     // Load from library name
     if (this.model.libraryModelName) {
-      const model_details = await Library.get_model(
-        this.model.libraryModelName
-      );
-      const modelUrl = `/${model_details.path}/model.json`; // customize base path if needed
-      try {
-        this.model = await tf.loadLayersModel(modelUrl);
-      } catch (e) {
-        throw new Error(`Failed to load model from ${modelUrl}: ${e.message}`);
+      if( this.model.libraryModelName == "tf.coco-ssd"){
+        //console.log(cocoSsd)
+        this.model = await cocoSsd.load();
+      }else{
+        const model_details = await Library.get_model(
+          this.model.libraryModelName
+        );
+        const modelUrl = `/${model_details.path}/model.json`; // customize base path if needed
+        try {
+          this.model = await tf.loadLayersModel(modelUrl);
+        } catch (e) {
+          throw new Error(`Failed to load model from ${modelUrl}: ${e.message}`);
+        }
       }
     }
-
     // Load from user files
     else if (this.model.userJsonFile && this.model.userWeightFiles?.length) {
       try {

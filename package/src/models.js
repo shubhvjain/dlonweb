@@ -8,10 +8,10 @@ export class Library {
         "website":"https://cocodataset.org",
         "models":{
           "coco-ssd":{
-            "type":"object_detection",
+            "type":"classify_image",
             "title":"Object Detection (coco-ssd)",
             "path":""
-          }
+          } 
         }
       },
       "deepd3": {
@@ -26,6 +26,7 @@ export class Library {
         "models": {
           "8f": {
             "title": "Dendritic spine image segmentation for 8 base filters",
+            "type":"segment_image",
             "input_type": "tiff",
             "input_help":"",
             "output_type": "tiff",
@@ -34,11 +35,13 @@ export class Library {
           "16f": {
             "title": "Dendritic spine image segmentation for 16 base filters",
             "input_type": "tiff",
+            "type":"segment_image",
             "path": "library/DeepD3_8F"
           },
             "32f": {
             "title": "Dendritic spine image segmentation for 32 base filters",
             "input_type": "tiff",
+            "type":"segment_image",
             "path": "library/DeepD3_8F"
           }
         }
@@ -53,7 +56,8 @@ export class Library {
         "models":{
           "segment":{
             "title":"Segment Endoscopic Image using BAGLS",
-            "path":"library/bagls_rgb"
+            "path":"library/bagls_rgb",
+            "type":"segment_image",
           }
         }
       }
@@ -74,10 +78,10 @@ export class Library {
     const result = [];
     for (const [projectKey, project] of Object.entries(data.projects)) {
       if (!project.models) continue;
-      for (const [modelKey] of Object.entries(project.models)) {
+      for (const [modelKey,model] of Object.entries(project.models)) {
         const label = `${project.title_short} (${modelKey})`;
         const value = `${projectKey}.${modelKey}`;
-        result.push({ label, value });
+        result.push({ label, value, type : model.type });
       }
     }
     return result;
