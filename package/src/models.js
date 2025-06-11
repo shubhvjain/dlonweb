@@ -14,38 +14,38 @@ export class Library {
           } 
         }
       },
-      "deepd3": {
-        "list":true,
-        "title_short": "DeepD3 ",
-        "title": "DeepD3 (A Deep Learning Framework for Detection of Dendritic Spines and Dendrites)",
-        "source":"Fernholz, M. H. P., Guggiana Nilo, D. A., Bonhoeffer, T., & Kist, A. M. (2024). DeepD3, an open framework for automated quantification of dendritic spines. In M. H. Hennig (Ed.), PLOS Computational Biology (Vol. 20, Issue 2, p. e1011774). Public Library of Science (PLoS). https://doi.org/10.1371/journal.pcbi.1011774",
-        "description":"Pre trained models to perform semantic segmentation of dendrites and dendrite spines in microscopy data",
-        "website": "https://deepd3.forschung.fau.de/",
-        "model_input": "Microscopy image stack in TIF/TIFF format",
-        "model_output":"Segmented stack with dendrites and dendritic spines",
-        "models": {
-          "8f": {
-            "title": "Dendritic spine image segmentation for 8 base filters",
-            "type":"segment_image",
-            "input_type": "tiff",
-            "input_help":"",
-            "output_type": "tiff",
-            "path": "library/DeepD3_8F"
-          },
-          "16f": {
-            "title": "Dendritic spine image segmentation for 16 base filters",
-            "input_type": "tiff",
-            "type":"segment_image",
-            "path": "library/DeepD3_8F"
-          },
-            "32f": {
-            "title": "Dendritic spine image segmentation for 32 base filters",
-            "input_type": "tiff",
-            "type":"segment_image",
-            "path": "library/DeepD3_8F"
-          }
-        }
-      },
+      // "deepd3": {
+      //   "list":true,
+      //   "title_short": "DeepD3 ",
+      //   "title": "DeepD3 (A Deep Learning Framework for Detection of Dendritic Spines and Dendrites)",
+      //   "source":"Fernholz, M. H. P., Guggiana Nilo, D. A., Bonhoeffer, T., & Kist, A. M. (2024). DeepD3, an open framework for automated quantification of dendritic spines. In M. H. Hennig (Ed.), PLOS Computational Biology (Vol. 20, Issue 2, p. e1011774). Public Library of Science (PLoS). https://doi.org/10.1371/journal.pcbi.1011774",
+      //   "description":"Pre trained models to perform semantic segmentation of dendrites and dendrite spines in microscopy data",
+      //   "website": "https://deepd3.forschung.fau.de/",
+      //   "model_input": "Microscopy image stack in TIF/TIFF format",
+      //   "model_output":"Segmented stack with dendrites and dendritic spines",
+      //   "models": {
+      //     "8f": {
+      //       "title": "Dendritic spine image segmentation for 8 base filters",
+      //       "type":"segment_image",
+      //       "input_type": "tiff",
+      //       "input_help":"",
+      //       "output_type": "tiff",
+      //       "path": "library/DeepD3_8F"
+      //     },
+      //     "16f": {
+      //       "title": "Dendritic spine image segmentation for 16 base filters",
+      //       "input_type": "tiff",
+      //       "type":"segment_image",
+      //       "path": "library/DeepD3_8F"
+      //     },
+      //       "32f": {
+      //       "title": "Dendritic spine image segmentation for 32 base filters",
+      //       "input_type": "tiff",
+      //       "type":"segment_image",
+      //       "path": "library/DeepD3_8F"
+      //     }
+      //   }
+      // },
       "bagls":{
         "list":true,
         "title_short":"BAGLS",
