@@ -8,30 +8,26 @@ on:
 jobs:
   build_site:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      # Install & build the shared package first
-      - name: Install package dependencies
-        run: cd package && npm install
+      - name: Install and build backend package
+        run: |
+          cd package
+          npm install
+          npm run build
 
-      - name: Build package
-        run: cd package && npm run build
-
-      # Now build the frontend
-      - name: Install frontend dependencies
-        run: cd frontend && npm install
-
-      - name: Build frontend
-        run: cd frontend && npm run build
+      - name: Install and build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
         env:
           BASE_PATH: '/${{ github.event.repository.name }}'
 
