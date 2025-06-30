@@ -28,6 +28,7 @@
 		"@ffmpeg/ffmpeg": "^0.12.15",
 		"@ffmpeg/util": "^0.12.2",
 		"@sveltejs/adapter-static": "^3.0.8",
+		"@tensorflow/tfjs": "^4.22.0",
 		"axios": "^1.9.0",
 		"bootstrap": "^5.3.6",
 		"dlonwebjs": "file:../package",
