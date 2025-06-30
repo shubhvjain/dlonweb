@@ -58,7 +58,12 @@ export class Library {
             "title":"Segment Endoscopic Image using BAGLS",
             "path":"library/bagls_rgb",
             "type":"segment_image",
-          }
+          },
+          // "new":{
+          //   "title":"Segment Endoscopic Image using BAGLS v2",
+          //   "path":"library/bagls_new",
+          //   "type":"segment_image",
+          // }
         }
       }
     }

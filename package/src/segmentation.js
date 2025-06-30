@@ -1,5 +1,5 @@
 // import * as tf from '@tensorflow/tfjs';
-import { BaseImage } from './data';
+import { BaseImage } from './data1';
 
 export class ImageSegmentation {
   /**

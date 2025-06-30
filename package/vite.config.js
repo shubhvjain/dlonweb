@@ -11,9 +11,14 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.js',
-      name: 'DLOnWeb',
-      fileName: 'dl-on-web',
-      formats: ['es', 'umd'],
+      name: 'Dlonwebjs',
+      fileName: (format) =>
+        format === 'es'
+          ? 'index.mjs'
+          : format === 'cjs'
+          ? 'index.cjs'
+          : 'index.umd.js',
+      formats: ['es', 'umd','cjs'],
     },
     rollupOptions: {
       external: ['@tensorflow/tfjs' ,"@ffmpeg/ffmpeg", "@ffmpeg/util"], // Don't bundle TensorFlow itself
