@@ -68,40 +68,39 @@
 		console.log(t)
 	}
 
-	async function handleUpload() {
-		if (!file) {
-      alert('Please select a file.');
-      return;
-    }
-    let metadata = {
-      "type":"something"
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('metadata', JSON.stringify(metadata));
+	// async function handleUpload() {
+	// 	if (!file) {
+  //     alert('Please select a file.');
+  //     return;
+  //   }
+  //   let metadata = {
+  //     "type":"something"
+  //   }
+  //   const formData = new FormData();
+  //   formData.append('file', file);
+  //   formData.append('metadata', JSON.stringify(metadata));
 
-    try {
-      let url = settings.backendURL
-      const response = await axios.post(url+'/action/inference', formData, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+  //   try {
+  //     let url = settings.backendURL
+  //     const response = await axios.post(url+'/action/inference', formData, {
+  //       headers: {
+  //         'Accept': 'application/json'
+  //       }
+  //     });
 
-      console.log('Response:', response.data);
-      alert('File uploaded and processed successfully.');
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Failed to upload file.');
-    }
-	}
+  //     console.log('Response:', response.data);
+  //     alert('File uploaded and processed successfully.');
+  //   } catch (err) {
+  //     console.error('Upload error:', err);
+  //     alert('Failed to upload file.');
+  //   }
+	// }
 
 	// import { load_input } from 'dlonwebjs';
 
 
 
 
-	let currentFile = $state();
 
 
 	async function loadFile() {
@@ -122,7 +121,7 @@
 
 		try {
 			const input_options = isVideo ? { fps } : {};
-			let all_options = {...browserOptions,...input_options}
+			let all_options = {...browserOptions,meta:input_options}
 			data = new Data(file,all_options);
 			await data.load();
 			data_valid = true
@@ -148,8 +147,8 @@
 	};
 </script>
 
-<button onclick={handleUpload} disabled={!data}>Test upload</button>
-<button onclick={showTensor} disabled={!data}>Test tensor</button>
+<!-- <button onclick={handleUpload} disabled={!data}>Test upload</button> -->
+<!-- <button onclick={showTensor} disabled={!data}>Test tensor</button> -->
 
 <div class="d-flex border-bottom1 mb-2">
 	<div class="p-1 flex-grow-1">

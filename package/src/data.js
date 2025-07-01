@@ -67,6 +67,11 @@ export class Data {
   async load(options = {}) {
     if (this.loaded) return;
     this._detectKindAndStructure();
+    if(this.kind=="video"){
+      if(!this.meta.fps){
+        throw new Error("fps value for video not provided")
+      }
+    }
     this.loaded = true;
   }
 
@@ -87,7 +92,8 @@ export class Data {
           this.tensor = await this.env.decodeImageToTensor(this.input, options);
           break;
         case "video":
-          this.tensor = await this.env.decodeVideoToImages(this.input, options);
+          let opts= {...this.meta,...options}
+          this.tensor = await this.env.decodeVideoToImages(this.input, opts);
           break;
         case "tiff":
           this.tensor = await this.env.decodeTiffToTensors(this.input, options);

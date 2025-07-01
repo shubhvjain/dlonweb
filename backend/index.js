@@ -58,7 +58,7 @@ app.post("/action/:action_type", (req, res, next) => {
         // Step 1: Load input data
         const data = new Data(req.file, data_settings);
         await data.load();
-
+        //console.log(data)
         // Step 2: Setup and load model
         const task = new InferenceTask({
           ...data_settings,
@@ -66,11 +66,11 @@ app.post("/action/:action_type", (req, res, next) => {
         });
         await task.loadModel();
         console.log("loaded");
-
+        //console.log(task)
         // Step 3: Run inference
         const result = await task.runInference(data);
-        console.log("runeed");
-        console.log(result);
+        console.log("ran");
+        //console.log(result);
         // Step 4: Return inference result
         const blob = await result.toBlob();
 
