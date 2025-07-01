@@ -1,4 +1,6 @@
 
+import * as cocoSsd from "@tensorflow-models/coco-ssd";
+
 export class Library {
   static data = {
     "projects":{
@@ -8,8 +10,15 @@ export class Library {
         "website":"https://cocodataset.org",
         "models":{
           "coco-ssd":{
-            "type":"classify_image",
-            "title":"Object Detection (coco-ssd)",
+            "active":true,
+            "type":"object_detection",
+            "model_input":["image"],
+            model_input_options:{
+              normalize: false,
+              addBatchDim: false,
+            },
+            "model_output":"bounding_boxes",
+            "title":"Detect general objects in an image",
             "path":""
           } 
         }
@@ -55,6 +64,7 @@ export class Library {
         "website":"https://www.bagls.org/",
         "models":{
           "segment":{
+            active:true,
             "title":"Segment Endoscopic Image using BAGLS",
             "path":"library/bagls_rgb",
             "type":"segment_image",
@@ -109,4 +119,26 @@ export class Library {
 
     return project.models[modelKey] || null;
   }
+
+    /**
+   * Load a model either via `coco-ssd` or using `env.tf.loadLayersModel`
+   * @param {object} env - injected environment with at least tf
+   * @param {string} modelKey - full key like "tf.coco-ssd"
+   */
+    static async loadModel(env, modelKey) {
+      if (!env || !env.tf) throw new Error("env with tf required");
+  
+      const modelInfo = await this.get_model(modelKey);
+      if (!modelInfo) throw new Error(`Model not found: ${modelKey}`);
+  
+      if (modelKey === "tf.coco-ssd") {
+        return await cocoSsd.load();
+      }
+      if (modelInfo.path) {
+        return await env.tf.loadLayersModel(modelInfo.path);
+      }
+  
+      throw new Error(`No valid loader for model: ${modelKey}`);
+    }
+
 }

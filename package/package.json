@@ -35,5 +35,8 @@
   "license": "MIT",
   "devDependencies": {
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@tensorflow-models/coco-ssd": "^2.2.3"
   }
 }
