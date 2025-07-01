@@ -1,8 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Library, InferenceTask } from 'dlonwebjs';
+	import { Library, InferenceTask, Data } from 'dlonwebjs';
+	import { browserOptions } from '$lib/data.browser';
+	import {getAllSettings} from "$lib/settings"
 
-
+	import axios from 'axios';
 	let {
 		input,
 		input_valid = $bindable(),
@@ -18,6 +20,8 @@
 	let error = $state('');
 	let select_model = $state('');
 	let select_location = $state('browser');
+	let custom_model_used = $state(false);
+	let settings = $state()
 
 	let task_running = $state(false);
 	let task_run_status = $state('');
@@ -47,13 +51,23 @@
 	const load_selected_model = async (name) => {
 		try {
 			if (name) {
-				model = await Library.get_model(name);
-				model_valid = true;
-				error = '';
+				if (name == 'custom') {
+					// to use user's own model
+					// model = await Library.get_model(name);
+					model_valid = false;
+					custom_model_used = true;
+					error = 'Upload your model files (.json + .bin)';
+				} else {
+					model = await Library.get_model(name);
+					model_valid = true;
+					custom_model_used = false;
+					error = '';
+				}
 			} else {
 				model_valid = false;
 				model = null;
 				error = 'Select a model';
+				custom_model_used = false;
 			}
 		} catch (err) {
 			model_valid = false;
@@ -62,7 +76,8 @@
 		}
 	};
 
-	const on_load_check_model_selection = async () => {
+	const load = async () => {
+
 		await load_model_list();
 		if (model_name) {
 			await load_selected_model(model_name);
@@ -75,17 +90,10 @@
 		}
 	};
 
-	const load = async () => {
-		try {
-			await on_load_check_model_selection();
-		} catch (err) {
-			loaded = false;
-			error = err.message;
-		}
-	};
-
 	onMount(async () => {
 		await load();
+		settings = getAllSettings()
+
 	});
 
 	const inference_pipeline = async () => {
@@ -99,11 +107,19 @@
 				task_run_status = 'No model selected';
 			}
 			if (select_location == 'browser') {
-				let task1 = new InferenceTask(model.type, input, { libraryModelName: select_model });
-				await task1.load();
+				let options = { ...browserOptions, modelName: select_model };
+
+				let task = new InferenceTask(options);
+
+				await task.loadModel();
+				//let task1 = new InferenceTask(model.type, input, { libraryModelName: select_model });
+				//await task1.load();
 				task_run_status = 'Model loaded successfully on browser. Running the model now ';
 				// step 2 : run the model
-				output = await task1.run();
+				console.log(task);
+				console.log(typeof input);
+				output = await task.runInference(input);
+				console.log(output);
 				task_run_status = 'Model run. Output is created';
 				console.log('done');
 
@@ -111,14 +127,55 @@
 
 				task_running = false;
 				//task_run_status = 'Done';
+				if (on_emit_output) {
+					on_emit_output(output);
+				}
 			} else if (select_location == 'server') {
 				// check if url provided
 				// check if server reachable
 				// send request
-			}
+				task_run_status = 'Uploading input to server for inference';
 
-			if (on_emit_output) {
-				on_emit_output(output);
+				// 1. Convert Data to Blob or base64 before sending
+				let metadata = {
+					modelName: select_model
+				};
+				const formData = new FormData();
+				formData.append('file', input.input);
+				formData.append('metadata', JSON.stringify(metadata));
+
+				// 2. Send it to your inference endpoint
+				let server_url = settings.backendURL
+				const response = await axios.post(`${server_url}/action/inference`, formData, {
+					headers: {
+          'Accept': 'application/json'
+        }
+				});
+
+				const { buffer, meta } = response.data;
+
+				// 3. Rebuild Data object from server response
+				const binary = Uint8Array.from(atob(buffer), (c) => c.charCodeAt(0));
+				const outputBlob = new Blob([binary], { type: meta.mimeType });
+				const outputFile = new File([outputBlob], meta.fileName || 'output.dat', {
+					type: meta.mimeType
+				});
+				console.log(outputFile)
+				output = new Data(outputFile, {
+					env: browserOptions.env,
+					kind: meta.kind,
+					structure: meta.structure,
+					meta: meta.meta
+				});
+				await output.load();
+
+				task_run_status = 'Inference complete on server';
+
+				if (on_emit_output) {
+					on_emit_output(output);
+				}
+
+				task_running = false;
 			}
 		} catch (err) {
 			console.log(err);
@@ -195,6 +252,11 @@
 	{/each}
 	<option value="custom">Use Your Own Tensorflow Model</option>
 </select>
+
+{#if custom_model_used}
+	Upload your model
+{/if}
+
 {#if model}{model.title}{/if}
 <div class="mb-3 mt-3 row">
 	<label for="inputPassword" class="col-sm-3 col-form-label">Run task on </label>

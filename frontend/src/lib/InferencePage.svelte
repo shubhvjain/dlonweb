@@ -30,12 +30,12 @@
 </script>
 
 {#if status.loaded}
-	<br /><br /><br /><br />
+	<br /><br /><br /> 
 	<div class="row justify-content-md-center mt-5">
 		<div class="col-lg-6">
 			<div class="card text-center border  {status.input?" border-success-subtle ":" border-danger-subtle  "} " >
 				<div class="card-body">
-					<Input bind:input_valid={status.input} bind:input={input}/>
+					<Input bind:data_valid={status.input} bind:data={input}/>
 				</div>
 			</div>
 			<div class="text-center">

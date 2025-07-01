@@ -1,14 +1,31 @@
 <!-- this is to read input or any kind from the user. it returns appropriate input class -->
 <script>
+	let { data = $bindable(), data_valid = $bindable(false) } = $props();
+
+	
   import axios from 'axios';
+	import Preview from './_Preview.svelte';
+	import { onMount } from 'svelte';
 	import { Data } from 'dlonwebjs';
 	import { browserOptions } from '$lib/data.browser';
   import {getAllSettings} from "$lib/settings"
+	import { input } from '@tensorflow/tfjs';
 	let file = $state(null);
-	let data = $state(null);
+	//let data = $state(null);
 	let previewURL = $state(null);
-	let error1 = $state(null);
   let settings = $state()
+	let fps = $state(10); // default FPS for videos
+	let isVideo = $state(false);
+
+	const allowedTypes = [
+		'image/png',
+		'image/jpeg',
+		'video/mp4',
+		'video/webm',
+		'image/tiff',
+		'image/tif'
+	];
+	let error = $state('');
 
   onMount(()=>{
     settings = getAllSettings()
@@ -16,23 +33,25 @@
 
 	async function handleLoad() {
 		if (!file) {
-			error1 = 'Please select a file.';
+			error = 'Please select a file.';
 			return;
 		}
-		error1 = null;
+		error = null;
 
 		try {
 			data = new Data(file, browserOptions);
 			await data.load();
+			data_valid = true
 			console.log('Data loaded:', data);
 		} catch (e) {
-			error1 = 'Error loading data: ' + e.message;
+			data_valid = false
+			error = 'Error loading data: ' + e.message;
 		}
 	}
 
 	async function handlePreview() {
 		if (!data || !data.loaded) {
-			error1 = 'Data not loaded yet.';
+			error = 'Data not loaded yet.';
 			return;
 		}
 
@@ -40,8 +59,13 @@
 			const blob = await data.toBlob();
 			previewURL = URL.createObjectURL(blob);
 		} catch (e) {
-			error1 = 'Preview failed: ' + e.message;
+			error = 'Preview failed: ' + e.message;
 		}
+	}
+
+	async function showTensor(){
+		let t = await data.getTensor()
+		console.log(t)
 	}
 
 	async function handleUpload() {
@@ -74,28 +98,15 @@
 
 	// import { load_input } from 'dlonwebjs';
 
-	import Preview from './_Preview.svelte';
-	import { sqrt } from '@tensorflow/tfjs';
-	import { onMount } from 'svelte';
 
-	let { input = $bindable(), input_valid = $bindable(false) } = $props();
-	const allowedTypes = [
-		'image/png',
-		'image/jpeg',
-		'video/mp4',
-		'video/webm',
-		'image/tiff',
-		'image/tif'
-	];
-	let error = $state('');
+
 
 	let currentFile = $state();
-	let fps = $state(10); // default FPS for videos
-	let isVideo = $state(false);
 
-	async function loadFile(file) {
-		input = null;
-		input_valid = false;
+
+	async function loadFile() {
+		data = null;
+		data_valid = false;
 		error = '';
 
 		if (!file) {
@@ -105,78 +116,48 @@
 
 		if (!allowedTypes.includes(file.type)) {
 			error = 'Unsupported file type.';
-			input_valid = false;
+			data_valid = false;
 			return;
 		}
 
 		try {
-			// Pass FPS only if video
-			const options = isVideo ? { fps } : {};
-			const result = await load_input(file, options);
-			if (result) {
-				input = result;
-				input_valid = true;
-				error = '';
-			} else {
-				error = 'Failed to load input.';
-			}
-		} catch (err) {
-			input = null;
-			console.error(err);
-			error = 'An error occurred while loading the file.';
+			const input_options = isVideo ? { fps } : {};
+			let all_options = {...browserOptions,...input_options}
+			data = new Data(file,all_options);
+			await data.load();
+			data_valid = true
+			error = '';
+			console.log('Data loaded:', data);
+		} catch (e) {
+			data= null
+			data_valid = false
+			error = 'Error in loading data: ' + e.message;
 		}
 	}
 
 	async function handleFileChange(event) {
-		let file = event.target.files[0];
-		currentFile = file;
+		let optfile = event.target.files[0];
+		file = optfile;
 		isVideo = file && file.type.startsWith('video/');
 		fps = 10; // reset fps when new file selected
 	}
 
-	$effect(() => {});
 
 	const load_input_file = async () => {
-		await loadFile(currentFile);
+		await loadFile();
 	};
 </script>
 
-<div class="card">
-	<input
-		type="file"
-		onchange={(e) => {
-			file = e.target.files[0];
-		}}
-	/>
-	<div>
-		<button onclick={handleLoad}>Load</button>
-    <button onclick={handleUpload} disabled={!data}>Upload</button>
-
-		<button onclick={handlePreview} disabled={!data}>Preview</button>
-	</div>
-
-	{#if error1}
-		<p style="color: red">{error1}</p>
-	{/if}
-
-	{#if previewURL}
-		{#if data?.kind === 'image'}
-			<img src={previewURL} class="preview" />
-		{:else if data?.kind === 'video'}
-			<video src={previewURL} class="preview" controls />
-		{:else}
-			<p>Preview not available for this data type.</p>
-		{/if}
-	{/if}
-</div>
+<button onclick={handleUpload} disabled={!data}>Test upload</button>
+<button onclick={showTensor} disabled={!data}>Test tensor</button>
 
 <div class="d-flex border-bottom1 mb-2">
 	<div class="p-1 flex-grow-1">
-		<h4 class={input_valid ? 'text-success' : 'text-danger'}>Input</h4>
+		<h4 class={data_valid ? 'text-success' : 'text-danger'}>Input</h4>
 	</div>
 	<div class="p-2">
-		{#if input}
-			{#if input_valid}
+		{#if data}
+			{#if data_valid}
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="20"
@@ -261,6 +242,6 @@
 		</div>
 	</div>
 </div>
-{#if input && input_valid}
-	<Preview {input} />
+{#if data && data_valid}
+	<Preview input={data} />
 {/if}
