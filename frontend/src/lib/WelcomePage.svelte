@@ -1,6 +1,7 @@
 <script>
 	import { Library } from 'dlonwebjs';
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	let custom_models = $state({});
 	let loaded = $state(false);
 	onMount(async () => {
@@ -177,7 +178,9 @@
 									<div class="p-2 flex-grow-1">
 										{custom_models[proj]['models'][model].title}
 									</div>
-									<div class="p-2"><button class="btn btn-link">Use</button></div>
+									<div class="p-2">
+										<a class="btn btn-link" href={base+"/inference/"+proj+"."+model}>Use</a>
+									</div>
 								</div>
 							</li>
 						{/each}
