@@ -1,10 +1,9 @@
 [build]
-	command = "cd package && npm install && npm run build && cd ../frontend && npm install && npm run build"
-	publish = "frontend/build"
+  command = "cd package && npm install && npm run build && cd ../frontend && npm install && npm run build"
+  publish = "frontend/build"
 
 [[headers]]
   for = "/*"
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin"
     Cross-Origin-Embedder-Policy = "require-corp"
-		
