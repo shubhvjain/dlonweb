@@ -1,5 +1,5 @@
 {
-  "name": "dlonwebjs",
+  "name": "dlonweb_core",
   "version": "0.0.1",
   "description": "A library to train and use Deep Learning models for image segmentation, object detection for various types of input data",
   "main": "./dist/index.cjs",
@@ -38,5 +38,8 @@
   },
   "dependencies": {
     "@tensorflow-models/coco-ssd": "^2.2.3"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.6.1"
   }
 }

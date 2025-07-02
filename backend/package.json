@@ -1,11 +1,12 @@
 {
-  "name": "dl-on-web-server",
+  "name": "dlonweb_backend",
   "version": "1.0.0",
   "description": "backend server for DL on the web that allows the frontend to use machine resources more effectively ",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "start": "node index.js"
   },
   "keywords": [
     "tensorflow",

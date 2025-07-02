@@ -50,7 +50,15 @@ async function imagesToVideo(images, options) {
   ]);
 
   const data = await ffmpeg.readFile('out.mp4');
-  return new Blob([data.buffer], { type: 'video/mp4' });
+	const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+
+  // Return a File object instead of Blob
+  const videoFile = new File([videoBlob], 'output.mp4', {
+    type: 'video/mp4',
+    lastModified: Date.now()
+  });
+
+  return videoFile;
 }else {
 	throw new Error("Video cannot be processed on your browser. Try running it via Node.js")
 }
