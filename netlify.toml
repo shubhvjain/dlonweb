@@ -1,5 +1,5 @@
 [build]
-  command = "cd package && npm install && npm run build && cd ../frontend && npm install && npm run build"
+  command = "cd package && npm install && npm run build && cd ../frontend && npm install && npm run build && cd .."
   publish = "frontend/build"
 
 [[headers]]
