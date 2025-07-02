@@ -1,5 +1,63 @@
 import * as tf from '@tensorflow/tfjs';
 
+
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { base } from '$app/paths';
+
+
+
+
+async function imagesToVideo(images, options) {
+	if (crossOriginIsolated) {
+	let baseURL =  `${base}/ffmpeg`;
+	baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm"
+	console.log(1)
+
+	const ffmpeg = new FFmpeg();
+	console.log(2)
+	ffmpeg.on('log', ({ message }) => {	
+		console.log(message);
+	});
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript'),
+  });
+	console.log(3)
+  // Write image files to FFmpeg FS with padded names
+  for (let i = 0; i < images.length; i++) {
+    const filename = `img${String(i).padStart(4, '0')}.png`; // e.g., img0000.png
+    await ffmpeg.writeFile(filename, await fetchFile(images[i]));
+  }
+	console.log(4)
+
+  // Create input.txt for FFmpeg concat
+  const listContent = images
+    .map((_, i) => `file 'img${String(i).padStart(4, '0')}.png'`)
+    .join('\n');
+  await ffmpeg.writeFile('input.txt', listContent);
+
+  // Run FFmpeg command
+  await ffmpeg.exec([
+    '-r', String(options.fps),
+    '-f', 'concat',
+    '-safe', '0',
+    '-i', 'input.txt',
+    '-vf', `fps=${options.fps}`,
+    '-pix_fmt', 'yuv420p',
+    'out.mp4'
+  ]);
+
+  const data = await ffmpeg.readFile('out.mp4');
+  return new Blob([data.buffer], { type: 'video/mp4' });
+}else {
+	throw new Error("Video cannot be processed on your browser. Try running it via Node.js")
+}
+}
+
+
+
 export const browserOptions = {
 	environment: 'browser',
 	env: {
@@ -55,7 +113,7 @@ export const browserOptions = {
 			if (!options.fps) {
 				throw new Error('fps required');
 			}
-
+			console.log(options)
 			return new Promise((resolve, reject) => {
 				const video = document.createElement('video');
 				video.src = URL.createObjectURL(file);
@@ -84,11 +142,11 @@ export const browserOptions = {
 						const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
 						const arrayBuffer = await blob.arrayBuffer();
 						const tensor = processFrameToTensor(canvas, options);
-
+						const file1 = new File([arrayBuffer], `frame_${i}.png`, { type: 'image/png' });
 						results.push({
 							tensor,
 							timestamp: time * 1000,
-							raw: new Blob([arrayBuffer], { type: 'image/png' })
+							raw: file1
 						});
 					}
 
@@ -256,62 +314,11 @@ export const browserOptions = {
 			};
 		},
 
-		async convertImagesToVideo(inputImages, options = {}) {
-			const {
-				fps = 15,
-				width = null,
-				height = null,
-				mimeType = 'video/webm',
-				fileName = 'output.webm'
-			} = options;
+		convertImagesToVideo:imagesToVideo,
 
-			// Validate input
-			if (!Array.isArray(inputImages) || inputImages.length === 0) {
-				throw new Error('Input must be a non-empty array of image-like objects');
-			}
-
-			// Create canvas
-			const firstImg = await loadImage(inputImages[0]);
-			const targetWidth = width || firstImg.width;
-			const targetHeight = height || firstImg.height;
-
-			const canvas = document.createElement('canvas');
-			canvas.width = targetWidth;
-			canvas.height = targetHeight;
-			const ctx = canvas.getContext('2d');
-
-			// Setup MediaRecorder
-			const stream = canvas.captureStream(fps);
-			const recordedChunks = [];
-			const recorder = new MediaRecorder(stream, { mimeType });
-
-			recorder.ondataavailable = (e) => {
-				if (e.data.size > 0) recordedChunks.push(e.data);
-			};
-
-			const startRecording = new Promise((res) => (recorder.onstart = res));
-			const stopRecording = new Promise((res) => (recorder.onstop = res));
-
-			recorder.start();
-			await startRecording;
-
-			// Draw each image frame
-			for (const image of inputImages) {
-				const img = await loadImage(image);
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-				ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-				await new Promise((r) => setTimeout(r, 1000 / fps));
-			}
-
-			recorder.stop();
-			await stopRecording;
-
-			const blob = new Blob(recordedChunks, { type: mimeType });
-			return new File([blob], fileName, { type: mimeType, lastModified: Date.now() });
-		},
 
     resolveModelLibraryPath(){
-      return "/"
+      return `${base}/`
     }
 	}
 };
@@ -393,27 +400,28 @@ async function decodeImageToTensor(file, options = {}) {
 }
 
 function processFrameToTensor(canvas, options = {}) {
-	const { resize = null, normalize = false, addBatchDim = false, dtype = null } = options;
-
-	let tensor = tf.browser.fromPixels(canvas); // shape: [h, w, 3]
-
-	if (resize) {
-		tensor = tf.image.resizeBilinear(tensor, resize);
+  let imgTensor = tf.browser.fromPixels(canvas);
+  // console.log(options)
+  // console.log("====")
+	if('inputShape' in options){
+		const [batch, height, width, channels] = options.inputShape;
+		if (height > 0 && width > 0 &&
+			(imgTensor.shape[0] !== height || imgTensor.shape[1] !== width)) {
+		imgTensor = tf.image.resizeBilinear(imgTensor, [height, width]);
 	}
-
-	if (normalize) {
-		tensor = tensor.toFloat().div(255.0);
-	} else if (dtype === 'float32') {
-		tensor = tensor.toFloat();
-	} else if (dtype === 'int32') {
-		tensor = tensor.toInt();
+	
+		if (options.dtype === 'float32') {
+			imgTensor = imgTensor.toFloat();
+			if (options.normalize) {
+				imgTensor = imgTensor.div(255);
+			}
+		} else if (options.dtype === 'int32') {
+			imgTensor = imgTensor.toInt();
+		}
+	
+		imgTensor = addBatchDimIfNeeded(imgTensor, options.addBatchDim);
 	}
-
-	if (addBatchDim) {
-		tensor = tensor.expandDims(0); // shape: [1, h, w, 3]
-	}
-
-	return tensor;
+  return imgTensor;
 }
 
 function loadImage(input) {

@@ -138,7 +138,8 @@
 
 				// 1. Convert Data to Blob or base64 before sending
 				let metadata = {
-					modelName: select_model
+					modelName: select_model,
+					... input.meta
 				};
 				const formData = new FormData();
 				formData.append('file', input.input);
