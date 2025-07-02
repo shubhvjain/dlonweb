@@ -67,6 +67,7 @@ export class InferenceTask {
     console.log(tensorInput)
     let output;
 
+    // ideally do this before loading the model 
     if (!this.modelMeta["model_input"].includes(input.kind)) {
       throw new Error("Unsupported input type for the selected model");
     }
@@ -83,9 +84,20 @@ export class InferenceTask {
       if (input.kind == "image") {
         output = this.model.predict(tensorInput);
       }else if (input.kind == "video"){
-        throw new Error("working on it ")
+        // tensorInput is of the form  [{raw,timestamp,tensor}]
+        // frames = tensorObjects.map(({ raw, timestamp }) => ({
+				// 	url: URL.createObjectURL(raw),
+				// 	timestamp
+				// }));
+        console.log("images generated")
+        output = await Promise.all(
+          tensorInput.map(async frame => {
+            const opt = await this.model.predict(frame.tensor)
+            return { ...frame, output:opt };
+          })
+        );
+        // throw new Error("working on it ")
       }
-      
     }
 
     console.log(output);
@@ -112,7 +124,29 @@ export class InferenceTask {
         });
         await output_image.load(options);
         return output_image;
-      }else{
+      } else if (input.kind=="video"){
+        let transformed_images = await Promise.all(
+          output.map(async frame => {
+            const segmented_image = await  this.env.imageTransform(frame.raw,"add_segmentation_mask", {
+              mask: frame.output,
+            });
+            return segmented_image.file 
+          })
+        );
+        // console.log(transformed_images)
+        //console.log(input.meta)
+
+        let combined_video = await this.env.convertImagesToVideo(transformed_images,input.meta)
+        let output_video = new Data(combined_video, {
+          environment: this.environment,
+          env: this.env,
+          meta: input.meta
+        });
+        await output_video.load(options);
+        return output_video;
+      }
+      else{
+        //console.log(output)
         return output;
       }
 

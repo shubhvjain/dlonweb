@@ -1,3 +1,8 @@
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs-extra');
+// const { file } = require('tmp-promise');
+const tmp = require('tmp-promise');
+
 const {pathToFileURL} = require('url')
 const tf = require("@tensorflow/tfjs-node");
 // const { Buffer } = require("buffer");
@@ -43,6 +48,9 @@ module.exports = {
       throw new Error("decodeVideoToTensors not implemented in Node yet");
     },
 
+    decodeVideoToImages : decodeVideoToImages,
+    convertImagesToVideo : encodeImagesToVideo,    
+
     decodeTiffToTensors: async (buffer) => {
       throw new Error("decodeTiffToTensors not implemented in Node yet");
     },
@@ -66,8 +74,10 @@ module.exports = {
     },
 
     // Future: video/image stacks
-    complexToBlob: async (tensor, data) => {
-      throw new Error("Complex toBlob() not implemented in Node");
+    complexToBlob: async (input, data) => {
+      // console.log(input)
+      // throw new Error("Complex toBlob() not implemented in Node");
+      return input.buffer
     },
 
     /**
@@ -205,7 +215,6 @@ module.exports = {
 };
 
 
-
 async function decodeImageToTensorNode(imageBuffer, options) {
   let imgTensor = tf.node.decodeImage(imageBuffer.buffer, 3);
 
@@ -236,49 +245,86 @@ async function decodeImageToTensorNode(imageBuffer, options) {
 }
 
 
+async function decodeVideoToImages(fileBuffer, options) {
+  if (!options.fps) throw new Error('fps required');
+  console.log(fileBuffer)
+  const { path: tmpDirPath, cleanup } = await tmp.dir({ unsafeCleanup: true });
+  const inputPath = path.join(tmpDirPath, 'input.mp4');
+  await fs.writeFile(inputPath, fileBuffer.buffer);
 
-// async function decodeImageToTensorNode(fileBuffer, options = {}) {
-//   const {
-//     targetHeight,
-//     targetWidth,
-//     targetChannels,
-//     normalize,
-//     addBatchDim = false,
-//     dtype = null,
-//   } = options;
+  const outputPattern = path.join(tmpDirPath, 'frame_%03d.png');
 
-//   let tensor = tf.node.decodeImage(fileBuffer.buffer, targetChannels);
+  await new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .outputOptions(['-vf', `fps=${options.fps}`])
+      .output(outputPattern)
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
 
-//   // Only resize if target size is explicitly set
-//   if (targetHeight && targetWidth) {
-//     tensor = tf.image.resizeBilinear(tensor, [targetHeight, targetWidth]);
-//   }
+  const files = await fs.readdir(tmpDirPath);
+  const frameFiles = files
+    .filter(f => f.startsWith('frame_') && f.endsWith('.png'))
+    .sort();
 
-//   // Normalize pixel values
-//   if (normalize === '0-1') {
-//     tensor = tensor.toFloat().div(255);
-//   } else if (normalize === '-1-1') {
-//     tensor = tensor.toFloat().div(127.5).sub(1);
-//   } else if (dtype === 'float32') {
-//     tensor = tensor.toFloat();
-//   } else if (dtype === 'int32') {
-//     tensor = tensor.toInt();
-//   }
+  const results = [];
+  for (let i = 0; i < frameFiles.length; i++) {
+    const name = frameFiles[i];
+    const framePath = path.join(tmpDirPath, name);
+    const buffer = await fs.readFile(framePath);
+    const timestamp = (i / options.fps) * 1000;
+    console.log(buffer)
+    console.log(options)
+    const tensor = await decodeImageToTensorNode({buffer}, options);
 
-//   // Convert channels if necessary
-//   if (tensor.shape[2] !== targetChannels) {
-//     if (tensor.shape[2] === 3 && targetChannels === 1) {
-//       tensor = tf.image.rgbToGrayscale(tensor);
-//     } else {
-//       throw new Error(`Expected ${targetChannels} channels but got ${tensor.shape[2]}`);
-//     }
-//   }
+    results.push({
+      name,
+      timestamp,
+      raw:{buffer},
+      tensor
+    });
+  }
 
-//   // Add batch dimension only if needed and input is 3D
-//   if (addBatchDim && tensor.shape.length === 3) {
-//     tensor = tensor.expandDims(0);
-//   }
+  await cleanup();
+  return results;
+}
 
-//   return tensor;
-// }
 
+async function encodeImagesToVideo(inputFiles, options = { fps: 10 }) {
+  const tmp = require('tmp-promise');
+  const { fps } = options;
+
+  // Create a temporary working directory
+  const { path: tmpDirPath, cleanup } = await tmp.dir({ unsafeCleanup: true });
+
+  try {
+    // 1. Save files to temporary directory with predictable names
+    for (let i = 0; i < inputFiles.length; i++) {
+      const filePath = path.join(tmpDirPath, `frame${String(i).padStart(3, '0')}.png`);
+      await fs.writeFile(filePath, inputFiles[i].buffer); // assuming .buffer exists
+    }
+
+    // 2. Create a temporary output file for the video
+    const { path: outputPath } = await tmp.file({ postfix: '.mp4' });
+
+    // 3. Use ffmpeg to convert images to video
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .addInput(path.join(tmpDirPath, 'frame%03d.png'))
+        .inputFPS(fps)
+        .videoCodec('libx264')
+        .outputOptions('-pix_fmt yuv420p')
+        .save(outputPath)
+        .on('end', () => resolve(outputPath))
+        .on('error', (err) => reject(err));
+    });
+
+    const videoBuffer = await fs.readFile(outputPath);
+    return {buffer:videoBuffer,name:"output.mp4",type:"video/mp4"};
+
+  } finally {
+    // Cleanup temporary directory and files
+    await cleanup();
+  }
+}

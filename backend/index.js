@@ -56,7 +56,9 @@ app.post("/action/:action_type", (req, res, next) => {
 
       try {
         // Step 1: Load input data
-        const data = new Data(req.file, data_settings);
+        let set_obj = {...data_settings,meta:metadata}
+        //console.log(set_obj)
+        const data = new Data(req.file, set_obj);
         await data.load();
         //console.log(data)
         // Step 2: Setup and load model
