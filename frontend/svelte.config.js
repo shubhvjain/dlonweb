@@ -12,7 +12,7 @@ const config = {
 			fallback: '404.html'
 		}),
 		paths:{
-			base: process.argv.includes('dev') ? '' : '/dlonweb1'
+			base: process.argv.includes('dev') ? '' : '/dlonweb1/'
 		}
 	},
 
