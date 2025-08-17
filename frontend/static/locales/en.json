@@ -1,0 +1,9 @@
+{
+  "about": "About this app",
+  "inference": "Run Predictions",
+  "training": "Train a Model",
+  "utilities": "Tools",
+  "convert_model": "Convert Model",
+  "settings": "Settings",
+  "model_library": "Available Models"
+}
