@@ -65,7 +65,6 @@ async function imagesToVideo(images, options) {
 }
 
 
-
 export const browserOptions = {
 	environment: 'browser',
 	env: {
@@ -99,6 +98,21 @@ export const browserOptions = {
 			return null;
 		},
 
+
+		///////
+		async inputToTensor(input_type,input){
+
+		},
+
+		async tensorToFile(tensor,fileType){
+
+		},
+
+
+
+
+
+		
 		//// Human ====> Data
 		/**
 		 * @param {File} file
@@ -324,7 +338,7 @@ export const browserOptions = {
 
 		convertImagesToVideo:imagesToVideo,
 
-
+		// relevant for InferenceTask class 
     resolveModelLibraryPath(){
       return `${base}/`
     }
@@ -451,8 +465,136 @@ function loadImage(input) {
 	});
 }
 
+async function decodeImageToTensorBrowser(file, options = {}) {
+  const {
+    inputShape = null,     // e.g. [1, 256, 256, 3]
+    targetHeight = null,
+    targetWidth = null,
+    targetChannels = 3,
+    normalize = false,     // "0-1", "-1-1", true, or false
+    addBatchDim = false,
+    dtype = "float32",
+    debug = false
+  } = options;
 
-async function decodeImageToTensorBrowser(file, options) {
+  const image = await loadImageElementFromFile(file);
+  let tensor = tf.browser.fromPixels(image); // shape: [H, W, C]
+
+  // --- Resize ---
+  let height = targetHeight, width = targetWidth;
+  if (inputShape) {
+    [, height, width] = inputShape; // batch is ignored
+  }
+  if (height && width) {
+    tensor = tf.image.resizeBilinear(tensor, [height, width]);
+  }
+
+  // --- Convert dtype ---
+  if (dtype === "float32") {
+    tensor = tensor.toFloat();
+  } else if (dtype === "int32") {
+    tensor = tensor.toInt();
+  }
+
+  // --- Normalize ---
+  if (normalize) {
+    if (normalize === "0-1" || normalize === true) {
+      tensor = tensor.div(255);
+    } else if (normalize === "-1-1") {
+      tensor = tensor.div(127.5).sub(1);
+    }
+  }
+
+  // --- Ensure correct channels ---
+  if (tensor.shape[2] !== targetChannels) {
+    if (tensor.shape[2] === 3 && targetChannels === 1) {
+      tensor = tf.image.rgbToGrayscale(tensor);
+    } else {
+      throw new Error(
+        `Expected ${targetChannels} channels but got ${tensor.shape[2]}`
+      );
+    }
+  }
+
+  // --- Add batch dimension ---
+  if (addBatchDim || (inputShape && inputShape[0] > 0)) {
+    if (tensor.shape.length === 3) {
+      tensor = tensor.expandDims(0); // [1, H, W, C]
+    }
+  }
+
+  if (debug) {
+    console.log("decodeImageToTensorBrowser →", tensor.shape, tensor.dtype);
+  }
+
+  return tensor;
+}
+
+async function decodeImageToTensorBrowser2(file, options = {}) {
+  const {
+    inputShape = null,     // e.g. [1, 256, 256, 3]
+    targetHeight = null,
+    targetWidth = null,
+    targetChannels = 3,
+    normalize = null,      // "0-1", "-1-1", or true (default 0-1)
+    addBatchDim = false,
+    dtype = "float32",
+    debug = false
+  } = options;
+
+  const image = await loadImageElementFromFile(file);
+  let tensor = tf.browser.fromPixels(image); // [H, W, C]
+
+  // Resize
+  let height = targetHeight, width = targetWidth;
+  if (inputShape) {
+    [, height, width] = inputShape; // ignore batch, use H,W
+  }
+  if (height && width) {
+    tensor = tf.image.resizeBilinear(tensor, [height, width]);
+  }
+
+  // Convert dtype
+  if (dtype === "float32") {
+    tensor = tensor.toFloat();
+  } else if (dtype === "int32") {
+    tensor = tensor.toInt();
+  }
+
+  // Normalization
+  if (normalize) {
+    if (normalize === "0-1" || normalize === true) {
+      tensor = tensor.div(255);
+    } else if (normalize === "-1-1") {
+      tensor = tensor.div(127.5).sub(1);
+    }
+  }
+
+  // Channels
+  if (tensor.shape[2] !== targetChannels) {
+    if (tensor.shape[2] === 3 && targetChannels === 1) {
+      tensor = tf.image.rgbToGrayscale(tensor);
+    } else {
+      throw new Error(
+        `Expected ${targetChannels} channels but got ${tensor.shape[2]}`
+      );
+    }
+  }
+
+  // Batch dimension
+  if (addBatchDim || (inputShape && inputShape[0] > 0)) {
+    tensor = tensor.expandDims(0); // [1, H, W, C]
+  }
+
+  if (debug) {
+    console.log("decodeImageToTensorBrowser →", tensor.shape, tensor.dtype);
+  }
+
+  return tensor;
+}
+
+
+async function decodeImageToTensorBrowser1(file, options) {
   // image can be HTMLImageElement, HTMLCanvasElement, ImageData
   // Use tf.browser.fromPixels for these
   const image = await loadImageElementFromFile(file);

@@ -5,5 +5,9 @@
   "utilities": "Tools",
   "convert_model": "Convert Model",
   "settings": "Settings",
-  "model_library": "Available Models"
+  "model_library": "Available Models",
+  "choose_model":"Choose a model",
+  "upload_data": "Upload your data (locally in your browser)",
+  "inference_options":"Options",
+  "start_prediction": "Start Prediction"
 }

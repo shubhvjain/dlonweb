@@ -1,5 +1,5 @@
 <script>
-  import { getAllSettings } from './settings.js';
+  import { getAllSettings } from './utils/settings.js';
 	let file = $state(null);
 	let error = $state('');
 	let isLoading = $state(false);

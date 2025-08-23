@@ -5,5 +5,10 @@
   "utilities": "Werkzeuge",
   "convert_model": "Modell konvertieren",
   "settings": "Einstellungen",
-  "model_library": "Verfügbare Modelle"
+  "model_library": "Verfügbare Modelle",
+  "choose_model":"Modell auswählen",
+  "upload_data": "Eingabedaten hochladen (wird lokal in Ihrem Browser verarbeitet)",
+  "inference_options":"Options",
+  "start_prediction": "Vorhersage starten"
+
 }

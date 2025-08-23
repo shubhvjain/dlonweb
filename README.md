@@ -16,6 +16,11 @@ This repository contains the source code for the `dl.on.web.js` platform for fed
 
 Due to resource constraints on the browser, we also provide a standalone backend service accessible via HTTP. It enables additional functionalities like converting Keras models for browser compatible inference
 
+
+## Overall Inference Pipeline 
+
+![Overview of inference pipeline](./frontend/static/images/overall_arch.svg)
+
 ## Project architecture
 
 ### Folder structure
@@ -37,6 +42,10 @@ Additional files in the root folder:
 
 - `install.sh` :  Script to install all dependencies
 
+## Links to documentation for each component of the project:
+- [Frontend](./frontend/README.md)
+- [Backend](./backend/README.md)
+- [Package](./package/README.md)
 
 ## Installation 
 

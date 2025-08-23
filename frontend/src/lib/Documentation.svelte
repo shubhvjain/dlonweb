@@ -1,5 +1,5 @@
 <script>
-  import Md from "./MD.svelte";
+  import Md from "./utils/MD.svelte";
   let {topic}= $props();
 
   const all_topics = {

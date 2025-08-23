@@ -7,7 +7,7 @@
 	onMount(async () => {
 		let data =   await Library.loadData()
 		custom_models = data["projects"]
-		console.log(custom_models)
+		//console.log(custom_models)
 		loaded = true;
 	});
 </script>
@@ -19,9 +19,7 @@
 			<div class="col-lg-12 lg-auto px-0">
 				<h1 class="display-6 fst-italic1">Federated learning in your browser</h1>
 				<p class="lead my-3">
-					Intro here Lorem ipsum dolor sit amet, consectetur adipisicing elit. Saepe animi dicta
-					soluta praesentium illo necessitatibus odit debitis nemo, dolorum similique doloribus
-					assumenda quia, neque libero non sapiente nostrum earum cumque.
+					Intro here 
 				</p>
         <button class="btn btn-outline-secondary" type="button">Run inference</button> <button class="ms-2 btn btn-outline-secondary" type="button">Train a model</button>
 			</div>
@@ -106,9 +104,8 @@
 			</div>
 		</div>
 
-    <div class="container px-2 py-2" id="feature1-grid">
+    <!-- <div class="container px-2 py-2" id="feature1-grid">
 			<h3 class="pb-2 border-bot1tom">Effective</h3>
-      <!-- <h4 class="text-body-emphasis">Centered screenshot</h4> -->
 			<div class="col-lg-12 mx-auto">
 				<p class="lead mb-4">
 					Quickly design and customize responsive mobile-first sites with Bootstrap, the world’s
@@ -118,7 +115,6 @@
 			
 			</div>
       <div class="px-4 pt-5 my-5 text-center border-bottom">
-        <!-- <div class="overflow-hidden" style="max-height: 35vh;"> -->
           <div class="container px-5">
             <img
               src="/images/image1.png"
@@ -130,11 +126,8 @@
             />
            <p>Caption here</p>
           </div>
-        <!-- </div> -->
       </div>
-			
-			
-		</div>
+		</div> -->
 
 
 
@@ -143,11 +136,11 @@
 			<h3 class="pb-2 border-bot1tom">Model Library</h3>
       <!-- <h4 class="text-body-emphasis">Centered screenshot</h4> -->
 			<div class="col-lg-12 mx-auto">
-				<p class="lead mb-4">
+				<!-- <p class="lead mb-4">
 					Quickly design and customize responsive mobile-first sites with Bootstrap, the world’s
 					most popular front-end open source toolkit, featuring Sass variables and mixins,
 					responsive grid system, extensive prebuilt components, and powerful JavaScript plugins.
-				</p>
+				</p> -->
 
 				{#if loaded}
 				{#each Object.keys(custom_models) as proj}

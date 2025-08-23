@@ -2,24 +2,27 @@
 	let { children } = $props();
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import '$lib/default.style.css';
-	let showInfoRow = $state(false);
+	import '$lib/utils/default.style.css';
+
 	//import {} from "dlonwebjs"
 	import { Library } from 'dlonwebjs';
 	import { onMount } from 'svelte';
 	import Documentation from '$lib/Documentation.svelte';
-	import { getAllSettings, saveAllSettings, getSystemSettings } from '$lib/settings.js';
+	import { getAllSettings, saveAllSettings, getSystemSettings } from '$lib/utils/settings.js';
+	import { translations, userSettings } from '$lib/utils/store.js';
+	import 'typeface-roboto';
 
+	let showInfoRow = $state(false);
 	let models = $state([]);
 	let loaded = $state(false)
-
-	let userSettings = $state({});
+	let userSettingsUI = $state({});
 	let systemSettings = $state({})
-	import { translations } from './store.js';
 
 	onMount(async () => {
 
-		userSettings = getAllSettings()
+		userSettingsUI = getAllSettings()
+		userSettings.set(userSettingsUI)
+		console.log($userSettings)
 		systemSettings = getSystemSettings()
 		set_theme()
 		await load_language()
@@ -42,12 +45,12 @@
 
 
 	const set_theme = ()=>{
-		document.documentElement.setAttribute('data-bs-theme', userSettings.theme);
+		document.documentElement.setAttribute('data-bs-theme', userSettingsUI.theme);
 	}
 
 	const load_language = async () => {
     try {
-			const res = await fetch(`/locales/${userSettings.language}.json`);
+			const res = await fetch(`/locales/${userSettingsUI.language}.json`);
 			//translations = await res.json()
 			translations.set(await res.json());
     } catch (e) {
@@ -59,20 +62,23 @@
 
 
 	const toggle_theme = () => {
-		userSettings.theme = userSettings.theme === 'light'? 'dark':'light'
-		saveAllSettings(userSettings)
+		userSettingsUI.theme = userSettingsUI.theme === 'light'? 'dark':'light'
+		saveAllSettings(userSettingsUI)
 		set_theme()
+		userSettings.set(userSettingsUI)
 	};
 
 	const change_language = (new_key)=>{
-		if (userSettings.language != new_key){
-			userSettings.language = new_key
-			saveAllSettings(userSettings)
+		if (userSettingsUI.language != new_key){
+			userSettingsUI.language = new_key
+			saveAllSettings(userSettingsUI)
 			load_language()
+			userSettings.set(userSettingsUI)
 		}
 	}
 
 </script>
+
 {#if loaded}
 <header class="navbar sticky-top bg-dark flex-md-nowrap p-0 shadow" data-bs-theme="dark">
 	<a
@@ -125,7 +131,7 @@
 					aria-expanded="false"
 				>
 					{#each systemSettings.languages as lang}
-						{#if lang.key === userSettings.language}
+						{#if lang.key === userSettingsUI.language}
 							{lang.title}
 						{/if}
 					{/each}
@@ -134,7 +140,7 @@
 					{#each systemSettings.languages as lang}
 						<li>
 							<a
-								class="dropdown-item {lang.key === userSettings.language ? 'active' : ''}"
+								class="dropdown-item {lang.key === userSettingsUI.language ? 'active' : ''}"
 								onclick={() => change_language(lang.key)}
 							>
 								{lang.title}
@@ -314,7 +320,7 @@
 										d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
 									/>
 								</svg>
-								{mdl.label}
+								{mdl.label[userSettings.language]}
 							</a>
 						</li>
 					{/each}
@@ -353,6 +359,10 @@
 </div>
 
 <style>
+	body {
+		font-family: 'Roboto', sans-serif;
+	}
+
 	.bi {
 		display: inline-block;
 		width: 1rem;

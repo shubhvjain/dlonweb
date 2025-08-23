@@ -1,5 +1,5 @@
 <script>
-	import ConvertModel from "$lib/ConvertModel.svelte";
+	import ConvertModel from "$lib/ConvertModelPage.svelte";
 
 </script>
 <ConvertModel/>

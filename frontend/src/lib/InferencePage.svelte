@@ -5,9 +5,11 @@
 	import { Library } from 'dlonwebjs';
 	import InferenceTask from './_InferenceTask.svelte';
 	import Output from './_Output.svelte';
+	import { translations } from '$lib/utils/store.js';
+
 
 	let modelList = $state([]);
-	let input = $state();
+	let input = $state([]);
 	let model = $state();
 	let outputs = $state([]);
 
@@ -29,35 +31,25 @@
 	}
 </script>
 
-{#if status.loaded}
-	<br /><br /><br /> 
-	<div class="row justify-content-md-center mt-5">
-		<div class="col-lg-6">
-			<div class="card text-center border  {status.input?" border-success-subtle ":" border-danger-subtle  "} " >
+{#if status.loaded}	
+	<div class="row justify-content-md-center mt-4">
+		<div class="col-lg-8">
+			<h3 class="pb-2">{$translations.inference}</h3>
+
+			<div class="card" >
+				<div class="card-body">
+					<InferenceTask bind:model_valid={status.model}  model_name={modelName} on_emit_output={appendOutputs} />
+				</div>
+			</div>
+
+
+			<!-- <div class="card text-center border  {status.input?" border-success-subtle ":" border-danger-subtle  "} " >
 				<div class="card-body">
 					<Input bind:data_valid={status.input} bind:data={input}/>
 				</div>
-			</div>
-			<div class="text-center">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="30"
-					height="30"
-					fill="currentColor"
-					class="bi bi-arrow-down"
-					viewBox="0 0 16 16"
-				>
-					<path
-						fill-rule="evenodd"
-						d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"
-					/>
-				</svg>
-			</div>
-			<div class="card text-center border  {status.model?" border-success-subtle ":" border-danger-subtle  "} " >
-				<div class="card-body">
-					<InferenceTask bind:model_valid={status.model} bind:model={model} model_name={modelName} input_valid={status.input} bind:input={input} on_emit_output={appendOutputs} />
-				</div>
-			</div>
+			</div> -->
+			
+		
 			<!-- <div class="card text-center">
 				<div class="card-body">
 					<h6 class="card-title border-bottom">Model</h6>
@@ -73,8 +65,8 @@
 			<div class="text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					width="30"
-					height="30"
+					width="45"
+					height="45"
 					fill="currentColor"
 					class="bi bi-arrow-down"
 					viewBox="0 0 16 16"

@@ -41,6 +41,92 @@
 			showPreview = true;
 		}
 	});
+
+
+/**
+ * Convert array of images into a video Blob.
+ * @param {Array<Blob|File|HTMLImageElement|string>} images - Array of image Blobs, Files, URLs, or HTMLImageElements
+ * @param {Object} options
+ * @param {number} options.fps - Frames per second
+ * @param {number} [options.width] - Optional output width
+ * @param {number} [options.height] - Optional output height
+ * @param {string} [options.mimeType] - e.g. "video/webm"
+ * @returns {Promise<Blob>} - The resulting video blob
+ */
+ async function imagesToVideo(images, { fps = 10, width, height, mimeType = "video/webm" } = {}) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const loadedImages = await Promise.all(
+    images.map(img => loadImageElement(img))
+  );
+
+  const w = width || loadedImages[0].naturalWidth;
+  const h = height || loadedImages[0].naturalHeight;
+
+  canvas.width = w;
+  canvas.height = h;
+
+  const stream = canvas.captureStream(fps);
+  const recorder = new MediaRecorder(stream, { mimeType });
+
+  const chunks = [];
+  recorder.ondataavailable = e => chunks.push(e.data);
+
+  recorder.start();
+
+  for (const img of loadedImages) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    await new Promise(r => setTimeout(r, 1000 / fps));
+  }
+
+  recorder.stop();
+
+  return new Promise(resolve => {
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType });
+      resolve(blob);
+    };
+  });
+}
+
+/**
+ * Load image from various formats into an HTMLImageElement
+ * @param {Blob|File|string|HTMLImageElement} source
+ * @returns {Promise<HTMLImageElement>}
+ */
+function loadImageElement(source) {
+  return new Promise((resolve, reject) => {
+    if (source instanceof HTMLImageElement) return resolve(source);
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    if (typeof source === "string") {
+      img.src = source;
+    } else {
+      img.src = URL.createObjectURL(source);
+    }
+
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+  });
+}
+
+let docvid = $state()
+async function run_video(){
+	let ar = frames.map(itm=>itm.url)
+	let b = await imagesToVideo(ar)
+	console.log(b)
+	const url = URL.createObjectURL(b);
+const video = document.createElement("video");
+video.src = url;
+video.controls = true;
+docvid.appendChild(video);
+}
+	
+
 </script>
 
 <style>
@@ -113,6 +199,8 @@
 
 					{:else if input.kind === 'video'}
 					<div>
+						<button onclick={run_video}>Video</button>
+						<div bind:this={docvid}></div>
 						<div class="video-preview">
 							<video controls src={previewUrl}></video>
 						</div>

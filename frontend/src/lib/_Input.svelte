@@ -1,21 +1,36 @@
 <!-- this is to read input or any kind from the user. it returns appropriate input class -->
 <script>
-	let { data = $bindable(), data_valid = $bindable(false) } = $props();
-
+	let { 
+		data_emit = ()=>{}
+	} = $props();
 	
-  import axios from 'axios';
+	import { filesStore } from '$lib/utils/filesStorage.js'; 
+	import Dropzone from 'svelte-file-dropzone';
+	import JSZip from 'jszip';
+	import axios from 'axios';
 	import Preview from './_Preview.svelte';
 	import { onMount } from 'svelte';
 	import { Data } from 'dlonwebjs';
-	import { browserOptions } from '$lib/data.browser';
-  import {getAllSettings} from "$lib/settings"
+	// import { browserOptions } from '$lib/utils/data.browser';
 	import { input } from '@tensorflow/tfjs';
-	let file = $state(null);
-	//let data = $state(null);
-	let previewURL = $state(null);
-  let settings = $state()
+
+	import { translations, userSettings } from '$lib/utils/store.js';
+
+	import DataPreview  from "$lib/_InputPreview.svelte"
+	//let file = $state(null);
+	
 	let fps = $state(10); // default FPS for videos
-	let isVideo = $state(false);
+
+	let files = $state([]);
+	let hasVideo = $state(false);
+	let error = $state('');
+	let progress = $state(0);
+
+
+	let data = $state([])
+	let data_valid = $state(false) 
+	let data_error = $state("")
+
 
 	const allowedTypes = [
 		'image/png',
@@ -23,224 +38,273 @@
 		'video/mp4',
 		'video/webm',
 		'image/tiff',
-		'image/tif'
+		'image/tif',
+		'text/plain'
 	];
-	let error = $state('');
 
-  onMount(()=>{
-    settings = getAllSettings()
-  })
-
-	async function handleLoad() {
-		if (!file) {
-			error = 'Please select a file.';
-			return;
-		}
-		error = null;
-
-		try {
-			data = new Data(file, browserOptions);
-			await data.load();
-			data_valid = true
-			console.log('Data loaded:', data);
-		} catch (e) {
+	onMount(() => {
+		if(data.length==0){
 			data_valid = false
-			error = 'Error loading data: ' + e.message;
+		}
+	});
+
+	// --- handle dropped/uploaded files
+	async function handleFileChange(event) {
+		const { acceptedFiles } = event.detail;
+		progress = 0;
+		files = [];
+		for (let f of acceptedFiles) {
+			if (f.name.endsWith('.zip')) {
+				await extractZip(f);
+			} else {
+				files = [...files, f];
+				//files.push(f);
+				//files = files; // trigger reactive update
+			}
+		}
+		categorizeFiles();
+		loadFiles()
+	}
+
+	// --- unzip support
+	async function extractZip(file) {
+		try {
+			const zip = await JSZip.loadAsync(file);
+			const entries = Object.values(zip.files);
+
+			for (const entry of entries) {
+				// skip macOS metadata files
+				if (
+					entry.dir ||
+					entry.name.startsWith('__MACOSX/') ||
+					entry.name.split('/').pop().startsWith('._')
+				) {
+					continue;
+				}
+
+				const blob = await entry.async('blob');
+				const f = new File([blob], entry.name, { type: getMime(entry.name) });
+				files.push(f);
+				files = files; 
+			}
+		} catch (e) {
+			error = 'Failed to read zip: ' + e.message;
 		}
 	}
 
-	async function handlePreview() {
-		if (!data || !data.loaded) {
-			error = 'Data not loaded yet.';
-			return;
+	// --- simple mime guesser for zip entries
+	function getMime(name) {
+		if (/\.(png|jpg|jpeg)$/i.test(name)) return 'image/jpeg';
+		if (/\.(tif|tiff)$/i.test(name)) return 'image/tiff';
+		if (/\.(mp4|webm)$/i.test(name)) return 'video/mp4';
+		if (/\.txt$/i.test(name)) return 'text/plain';
+		return 'application/octet-stream';
+	}
+
+	// --- categorize and count
+	let summary = $state({});
+	function categorizeFiles() {
+		let images = 0,
+			videos = 0,
+			texts = 0,
+			unknown = 0;
+		for (let f of files) {
+			if (f.type.startsWith('image/')) images++;
+			else if (f.type.startsWith('video/')) videos++;
+			else if (f.type === 'text/plain') texts++;
+			else unknown++;
 		}
+		hasVideo = videos > 0;
+		summary = { images, videos, texts, unknown };
+	}
+
+
+	// --- load all files into Data[]
+	async function loadFiles1() {
+		data = [];
+		data_valid = false;
+		error = '';
+		progress = 0;
 
 		try {
-			const blob = await data.toBlob();
-			previewURL = URL.createObjectURL(blob);
+			let count = 0;
+			// for (let f of files) {
+			// 	const options = f.type.startsWith('video/') ? { fps } : {};
+			// 	let all_opts = { ...browserOptions, meta: options };
+			// 	let d = new Data(f, all_opts);
+			// 	await d.load();
+
+			// 	data.push(d);
+			// 	count++;
+			// 	progress = Math.round((count / files.length) * 100);
+				
+			// }
+			console.log(files)
+			data_valid = files.length > 0;
+			console.log(data_valid)
+			data_error=""
+			let d = {data:files,data_valid,options:{fps},data_error}
+			data_emit({...d})
 		} catch (e) {
-			error = 'Preview failed: ' + e.message;
+			data_error = 'Error loading files: ' + e.message;
+			data_emit({data_valid,data_error})
 		}
 	}
 
-	async function showTensor(){
-		let t = await data.getTensor()
-		console.log(t)
+	async function loadFiles() {
+	data = [];
+	data_valid = false;
+	error = '';
+	progress = 0;
+
+	try {
+		// --- save raw files in the store here
+		filesStore.set([...files]);
+
+		data_valid = files.length > 0;
+		data_error = "";
+		let d = { data: files, data_valid, options: { fps }, data_error };
+		data_emit({ ...d });
+	} catch (e) {
+		data_error = 'Error loading files: ' + e.message;
+		data_emit({ data_valid, data_error });
 	}
+}
+
 
 	// async function handleUpload() {
 	// 	if (!file) {
-  //     alert('Please select a file.');
-  //     return;
-  //   }
-  //   let metadata = {
-  //     "type":"something"
-  //   }
-  //   const formData = new FormData();
-  //   formData.append('file', file);
-  //   formData.append('metadata', JSON.stringify(metadata));
+	//     alert('Please select a file.');
+	//     return;
+	//   }
+	//   let metadata = {
+	//     "type":"something"
+	//   }
+	//   const formData = new FormData();
+	//   formData.append('file', file);
+	//   formData.append('metadata', JSON.stringify(metadata));
 
-  //   try {
-  //     let url = settings.backendURL
-  //     const response = await axios.post(url+'/action/inference', formData, {
-  //       headers: {
-  //         'Accept': 'application/json'
-  //       }
-  //     });
+	//   try {
+	//     let url = settings.backendURL
+	//     const response = await axios.post(url+'/action/inference', formData, {
+	//       headers: {
+	//         'Accept': 'application/json'
+	//       }
+	//     });
 
-  //     console.log('Response:', response.data);
-  //     alert('File uploaded and processed successfully.');
-  //   } catch (err) {
-  //     console.error('Upload error:', err);
-  //     alert('Failed to upload file.');
-  //   }
+	//     console.log('Response:', response.data);
+	//     alert('File uploaded and processed successfully.');
+	//   } catch (err) {
+	//     console.error('Upload error:', err);
+	//     alert('Failed to upload file.');
+	//   }
 	// }
 
 	// import { load_input } from 'dlonwebjs';
 
+	// async function loadFile() {
+	// 	data = null;
+	// 	data_valid = false;
+	// 	error = '';
 
+	// 	if (!file) {
+	// 		error = 'No file selected.';
+	// 		return;
+	// 	}
 
+	// 	if (!allowedTypes.includes(file.type)) {
+	// 		error = 'Unsupported file type.';
+	// 		data_valid = false;
+	// 		return;
+	// 	}
 
+	// 	try {
+	// 		const input_options = isVideo ? { fps } : {};
+	// 		let all_options = { ...browserOptions, meta: input_options };
+	// 		data = new Data(file, all_options);
+	// 		await data.load();
+	// 		data_valid = true;
+	// 		error = '';
+	// 		console.log('Data loaded:', data);
+	// 	} catch (e) {
+	// 		data = null;
+	// 		data_valid = false;
+	// 		error = 'Error in loading data: ' + e.message;
+	// 	}
+	// }
 
-
-	async function loadFile() {
-		data = null;
-		data_valid = false;
-		error = '';
-
-		if (!file) {
-			error = 'No file selected.';
-			return;
-		}
-
-		if (!allowedTypes.includes(file.type)) {
-			error = 'Unsupported file type.';
-			data_valid = false;
-			return;
-		}
-
-		try {
-			const input_options = isVideo ? { fps } : {};
-			let all_options = {...browserOptions,meta:input_options}
-			data = new Data(file,all_options);
-			await data.load();
-			data_valid = true
-			error = '';
-			console.log('Data loaded:', data);
-		} catch (e) {
-			data= null
-			data_valid = false
-			error = 'Error in loading data: ' + e.message;
-		}
-	}
-
-	async function handleFileChange(event) {
-		let optfile = event.target.files[0];
-		file = optfile;
-		isVideo = file && file.type.startsWith('video/');
-		fps = 10; // reset fps when new file selected
-	}
-
-
-	const load_input_file = async () => {
-		await loadFile();
-	};
 </script>
-
-<!-- <button onclick={handleUpload} disabled={!data}>Test upload</button> -->
-<!-- <button onclick={showTensor} disabled={!data}>Test tensor</button> -->
-
-<div class="d-flex border-bottom1 mb-2">
-	<div class="p-1 flex-grow-1">
-		<h4 class={data_valid ? 'text-success' : 'text-danger'}>Input</h4>
-	</div>
-	<div class="p-2">
-		{#if data}
-			{#if data_valid}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					fill="currentColor"
-					class="bi bi-check2-circle text-success"
-					viewBox="0 0 16 16"
-				>
-					<path
-						d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0"
-					/>
-					<path
-						d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"
-					/>
-				</svg>
-			{:else}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					fill="currentColor"
-					class="bi bi-exclamation-circle text-danger"
-					viewBox="0 0 16 16"
-				>
-					<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-					<path
-						d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"
-					/>
-				</svg>
-			{/if}
-		{:else if error}
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				fill="currentColor"
-				class="bi bi-exclamation-circle text-danger"
-				viewBox="0 0 16 16"
-			>
-				<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-				<path
-					d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"
-				/>
-			</svg>
-		{/if}
-	</div>
-</div>
 <div>
-	<input id="file-upload" type="file" accept="image/*,video/*" onchange={handleFileChange} />
+	<Dropzone containerClasses="dropzone11" on:drop={handleFileChange} multiple={true}>
+		<p>Drag & drop files or a .zip folder</p>
+	</Dropzone>
 
-	{#if isVideo}
-		<div class="mt-2">
-			<label for="fps-input">Frames Per Second:</label>
-			<input id="fps-input" type="number" min="1" max="60" bind:value={fps} class="form-control" />
+
+
+
+<div class="d-flex">
+  <div class="p-2 flex-fill">
+		{#if files.length}
+		<div class="mt-2 text-success">
+			<p>
+				<b>Found:</b>
+				{#if summary.images > 0}{summary.images} images{/if}
+				{#if summary.videos > 0}{summary.videos} videos{/if}
+				{#if summary.texts > 0}{summary.texts} text files{/if}
+				{#if summary.unknown > 0}{summary.unknown} unrecognized{/if}
+			</p>
+		</div>
+	{/if}
+	</div>
+  <!-- <div class="p-2 flex-fill">
+		{#if data_valid}
+		<DataPreview  {data}/>
+		{/if}
+	</div> -->
+
+</div>
+
+	{#if hasVideo}
+	<h6 class="text-secondary">Additional option for processing videos</h6>
+
+<div class="input-group flex-nowrap">
+
+  <span class="input-group-text" id="addon-wrapping">Frames per second (FPS)</span>
+  <input class="form-control" type="number" min="1" max="60" bind:value={fps} aria-label="Username" aria-describedby="addon-wrapping">
+</div>
+	{/if}
+	{#if progress > 0 && progress < 100}
+		<div class="progress mt-2">
+			<div class="progress-bar" style="width:{progress}%"></div>
 		</div>
 	{/if}
 
-	<div class="d-flex border-bottom1 mb-2">
-		<div class="p-2 flex-grow-1">
-			{#if error}
-				<div class="alert alert-danger m-1">
-					{error}
-				</div>
-			{/if}
-		</div>
-		<div class="p-2">
-			<button class="btn btn-success" onclick={load_input_file}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="16"
-					height="16"
-					fill="currentColor"
-					class="bi bi-image-fill"
-					viewBox="0 0 16 16"
-				>
-					<path
-						d="M.002 3a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2zm1 9v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062zm5-6.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0"
-					/>
-				</svg>
-				Load input
-			</button>
-		</div>
-	</div>
+	{#if data_error}
+		<div class="alert alert-danger mt-2">{data_error}</div>
+	{/if}
+
+	<!-- <div class="mt-2">
+		<button class="btn btn-success" onclick={loadFiles} disabled={!files.length}>
+			Load files
+		</button>
+	</div> -->
+
+
 </div>
-{#if data && data_valid}
-	<Preview input={data} />
-{/if}
+
+<style>
+	.dropzone11 {
+		border: 2px dashed var(--bs-border-color);
+		border-radius: 0.375rem;
+		padding: 1rem;
+		text-align: center;
+	}
+	.progress {
+		height: 6px;
+		background: #ddd;
+	}
+	.progress-bar {
+		height: 100%;
+		background: green;
+	}
+</style>

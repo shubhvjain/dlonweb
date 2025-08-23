@@ -1,47 +1,71 @@
 <script>
-	import { onMount } from 'svelte';
-	import { Library, InferenceTask, Data } from 'dlonwebjs';
-	import { browserOptions } from '$lib/data.browser';
-	import {getAllSettings} from "$lib/settings"
+	import { onMount, onDestroy } from 'svelte';
+	import { Library, Data } from 'dlonwebjs';
+	import { translations, userSettings } from '$lib/utils/store.js';
+	import Input from './_Input.svelte';
+	import { InferencePipeline } from '$lib/utils/inferencePipeline.js';
+	import { filesStore } from '$lib/utils/filesStorage';
+	import { get } from 'svelte/store';
 
-	import axios from 'axios';
-	let {
-		input,
-		input_valid = $bindable(),
-		model_name,
-		model = $bindable(),
-		model_valid = $bindable(false),
-		output = $bindable(),
-		on_emit_output
-	} = $props();
+	let { model_valid = $bindable(false), model_name, on_emit_output } = $props();
 
+	let input_valid = $state(false);
+	let input_data = $state([]);
+	let input_options = $state({});
+	let worker = $state();
+	let error = $state('');
+	let progress = $state({ current: 0, total: 0, percentage: 0 });
+	let status = $state('');
+	let model_details = $state({ title: '', description: '' });
 	let modelList = $state([]);
 	let loaded = $state(false);
-	let error = $state('');
 	let select_model = $state('');
 	let select_location = $state('browser');
 	let custom_model_used = $state(false);
-	let settings = $state()
-
 	let task_running = $state(false);
 	let task_run_status = $state('');
+	let output = $state();
+	let pipeline = $state();
 
-	$effect(() => {
+	const on_input_valid = (opt) => {
+		input_valid = opt.data_valid;
+		console.log(opt);
+		if (input_valid) {
+			input_data = $state.snapshot(filesStore);
+			console.log(input_data);
+			input_options = opt.options;
+		}
 		check_valid();
+	};
+
+	onMount(async () => {
+		await load_model_list();
+
+		if (model_name) {
+			await load_selected_model(model_name);
+			select_model = model_name;
+		}
+
+		loaded = true;
+	});
+
+	onDestroy(() => {
+		if (pipeline) {
+			pipeline.terminate();
+		}
 	});
 
 	const check_valid = () => {
 		let er = [];
-		if (!model) {
+		if (!select_model) {
 			er.push('No model selected for inference task');
+			model_valid = false;
 		}
 		if (!input_valid) {
 			er.push('Input is not valid');
 		}
-		if (er.length > 0) {
-			model_valid = false;
-		}
-		error = er.join(',');
+		error = er.join(', \n');
+		model_valid = er.length === 0;
 	};
 
 	const load_model_list = async () => {
@@ -49,242 +73,218 @@
 	};
 
 	const load_selected_model = async (name) => {
-		try {
-			if (name) {
-				if (name == 'custom') {
-					// to use user's own model
-					// model = await Library.get_model(name);
-					model_valid = false;
-					custom_model_used = true;
-					error = 'Upload your model files (.json + .bin)';
-				} else {
-					model = await Library.get_model(name);
-					model_valid = true;
-					custom_model_used = false;
-					error = '';
-				}
-			} else {
-				model_valid = false;
-				model = null;
-				error = 'Select a model';
-				custom_model_used = false;
-			}
-		} catch (err) {
+		if (name === 'custom') {
 			model_valid = false;
-			console.log(error);
-			error = err.message;
-		}
-	};
-
-	const load = async () => {
-
-		await load_model_list();
-		if (model_name) {
-			await load_selected_model(model_name);
-			select_model = model_name;
-			loaded = true;
+			custom_model_used = true;
+			error = 'Upload your model files (.json + .bin)';
 		} else {
-			console.log(model_name);
-			loaded = true;
-			error = 'Select a model';
+			custom_model_used = false;
+			model_details = modelList.find((itm) => itm.value === name);
+			model_valid = true;
+			error = '';
 		}
+		check_valid();
 	};
 
-	onMount(async () => {
-		await load();
-		settings = getAllSettings()
-
+	$effect(() => {
+		check_valid();
 	});
 
+	const sanitizeJSON = (jsn) => {
+		return JSON.parse(JSON.stringify(jsn));
+	};
+
+	// Start the inference pipeline
 	const inference_pipeline = async () => {
+		if (!select_model || !input_valid) {
+			task_run_status = 'Model or input invalid';
+			return;
+		}
+
+		task_running = true;
+		progress = { current: 0, total: 0, percentage: 0 };
+		error = '';
+		task_run_status = 'Initializing...';
+
 		try {
-			// step 1 : load the model
-			task_running = true;
-			task_run_status = 'Starting the inference pipeline';
-
-			if (!model) {
-				task_running = false;
-				task_run_status = 'No model selected';
+			// Create worker if not already exists
+			if (!worker) {
+				worker = new Worker(new URL('$lib/utils/inference.worker.js', import.meta.url), {
+					type: 'module'
+				});
 			}
-			if (select_location == 'browser') {
-				let options = { ...browserOptions, modelName: select_model };
 
-				let task = new InferenceTask(options);
+			// Create or recreate pipeline
+			pipeline = new InferencePipeline(select_location, 'web_worker', worker);
 
-				await task.loadModel();
-				//let task1 = new InferenceTask(model.type, input, { libraryModelName: select_model });
-				//await task1.load();
-				task_run_status = 'Model loaded successfully on browser. Running the model now ';
-				// step 2 : run the model
-				console.log(task);
-				console.log(typeof input);
-				output = await task.runInference(input);
-				console.log(output);
-				task_run_status = 'Model run. Output is created';
-				console.log('done');
+			task_run_status = 'Loading model...';
 
-				// step 3 : show the output
-
-				task_running = false;
-				//task_run_status = 'Done';
-				if (on_emit_output) {
-					on_emit_output(output);
-				}
-			} else if (select_location == 'server') {
-				// check if url provided
-				// check if server reachable
-				// send request
-				task_run_status = 'Uploading input to server for inference';
-
-				// 1. Convert Data to Blob or base64 before sending
-				let metadata = {
-					modelName: select_model,
-					... input.meta
+			// Progress callback
+			const onProgress = (p) => {
+				progress = {
+					current: p.current,
+					total: p.total,
+					percentage: p.total > 0 ? (p.current / p.total) * 100 : 0
 				};
-				const formData = new FormData();
-				formData.append('file', input.input);
-				formData.append('metadata', JSON.stringify(metadata));
+				task_run_status = `Processing ${p.current}/${p.total}`;
+			};
 
-				// 2. Send it to your inference endpoint
-				let server_url = settings.backendURL
-				const response = await axios.post(`${server_url}/action/inference`, formData, {
-					headers: {
-          'Accept': 'application/json'
-        }
-				});
+			task_run_status = 'Processing Input';
 
-				const { buffer, meta } = response.data;
+			// Run inference
+			const filesArray = Array.from(get(filesStore));
 
-				// 3. Rebuild Data object from server response
-				const binary = Uint8Array.from(atob(buffer), (c) => c.charCodeAt(0));
-				const outputBlob = new Blob([binary], { type: meta.mimeType });
-				const outputFile = new File([outputBlob], meta.fileName || 'output.dat', {
-					type: meta.mimeType
-				});
-				console.log(outputFile)
-				output = new Data(outputFile, {
-					env: browserOptions.env,
-					kind: meta.kind,
-					structure: meta.structure,
-					meta: meta.meta
-				});
-				await output.load();
-
-				task_run_status = 'Inference complete on server';
-
-				if (on_emit_output) {
-					on_emit_output(output);
-				}
-
-				task_running = false;
+			if (filesArray.length == 0) {
+				throw new Error('No input files available');
 			}
+
+			/*
+    inputFiles = [],
+		modelDetails = { name: '', model: null },
+		runOptions = { location: 'browser', mode: 'web_worker', worker: null },
+		onProgress = () => {}
+    
+    */
+
+			output = await pipeline.run(
+				filesArray,
+				sanitizeJSON({ name: select_model }),
+				{ location: 'browser', mode: 'main_thread' },
+				onProgress
+			);
+
+			task_run_status = 'Inference completed!';
+			console.log('Pipeline output:', output);
 		} catch (err) {
-			console.log(err);
+			console.error('Pipeline error:', err);
+			error = `Pipeline failed: ${err.message}`;
+			task_run_status = 'Pipeline failed';
+		} finally {
 			task_running = false;
-			task_run_status = `Error : ${err.message}`;
+			// Reset progress after a delay to show completion
+			setTimeout(() => {
+				progress = { current: 0, total: 0, percentage: 0 };
+			}, 2000);
+		}
+	};
+
+	// Cancel the running pipeline
+	const cancel_pipeline = () => {
+		if (pipeline && task_running) {
+			pipeline.cancel();
+			task_run_status = 'Cancelling...';
+			task_running = false;
+			progress = { current: 0, total: 0, percentage: 0 };
+
+			setTimeout(() => {
+				task_run_status = 'Pipeline cancelled';
+			}, 500);
 		}
 	};
 </script>
 
-<!-- {input_valid} -->
-<div class="d-flex border-bottom1 mb-2">
-	<div class="p-1 flex-grow-1">
-		<h4 class={model_valid ? 'text-success' : 'text-danger'}>Task Selection</h4>
-	</div>
-	<div class="p-2">
-		{#if model}
-			{#if model_valid}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					fill="currentColor"
-					class="bi bi-check2-circle text-success"
-					viewBox="0 0 16 16"
-				>
-					<path
-						d="M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0"
-					/>
-					<path
-						d="M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0z"
-					/>
-				</svg>
-			{:else}
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					fill="currentColor"
-					class="bi bi-exclamation-circle text-danger"
-					viewBox="0 0 16 16"
-				>
-					<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-					<path
-						d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"
-					/>
-				</svg>
-			{/if}
-		{:else if error}
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="20"
-				height="20"
-				fill="currentColor"
-				class="bi bi-exclamation-circle text-danger"
-				viewBox="0 0 16 16"
+<div class="p-1 mb-2 pt-2">
+	<!-- {#if workerRunning}<p>Progress: {progress.percentage.toFixed(1)}%</p>{/if} -->
+	<h4 class="mb-2">1. {$translations.choose_model}</h4>
+
+	<select
+		class="form-select form-select-lg mb-2"
+		aria-label="select model"
+		onchange={() => load_selected_model(select_model)}
+		bind:value={select_model}
+	>
+		<option value="" selected>Select</option>
+		{#each modelList as m}
+			<option value={m.value}> {m.label[$userSettings['language']]} </option>
+		{/each}
+		<!-- <option value="custom">Use Your Own Tensorflow Model</option> -->
+	</select>
+
+	{#if custom_model_used}
+		<div class="alert alert-info p-2 m-2">
+			<strong>Custom Model:</strong> Upload your model files (.json + .bin)
+		</div>
+	{/if}
+
+	{#if select_model}
+		<div class="alert alert-light" role="alert">
+			<p>{model_details.description[$userSettings['language']]}</p>
+		</div>
+	{/if}
+</div>
+
+<div class="p-1 mb-2 border-top pt-4">
+	<h4>2. {$translations.upload_data}</h4>
+	<Input data_emit={on_input_valid} />
+</div>
+
+<div class="p-1 mb-2 mt-2 border-top pt-4">
+	<h4>3. {$translations.inference_options}</h4>
+
+	<div class="mb-3 mt-3 row">
+		<label for="execution-location" class="col-sm-3 col-form-label">Run task on</label>
+		<div class="col-sm-9">
+			<select
+				class="form-select mb-3"
+				aria-label="select execution location"
+				bind:value={select_location}
+				id="execution-location"
 			>
-				<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-				<path
-					d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"
-				/>
-			</svg>
-		{/if}
+				<option value="browser" selected>Browser</option>
+				<option value="server">Server</option>
+			</select>
+		</div>
 	</div>
 </div>
-<select
-	class="form-select mb-3"
-	aria-label="select model"
-	onchange={() => load_selected_model(select_model)}
-	bind:value={select_model}
->
-	<option value="" selected>Select</option>
-	{#each modelList as m}
-		<option value={m.value}> {m.label} </option>
-	{/each}
-	<option value="custom">Use Your Own Tensorflow Model</option>
-</select>
-
-{#if custom_model_used}
-	Upload your model
-{/if}
-
-{#if model}{model.title}{/if}
-<div class="mb-3 mt-3 row">
-	<label for="inputPassword" class="col-sm-3 col-form-label">Run task on </label>
-	<div class="col-sm-9">
-		<select class="form-select mb-3" aria-label="select model" bind:value={select_location}>
-			<option value="browser" selected>Browser</option>
-			<option value="server">Server</option>
-		</select>
-	</div>
-</div>
-
-<div class="d-flex border-bottom1 mb-2">
-	<div class="p-2 flex-grow-1">
+<!-- <hr> -->
+<div class="d-flex align-items-center p-1 border-top pt-4">
+	<!-- Left section: Error / Progress / Status -->
+	<div class="flex-grow-1 me-3">
 		{#if error}
-			<span class="text-danger"> {error} </span>
+			<div class="text-danger mb-2">{error}</div>
+		{/if}
+
+		{#if task_running && progress.total > 0}
+			<div class="mb-2">
+				<div class="progress">
+					<div
+						class="progress-bar progress-bar-striped progress-bar-animated"
+						role="progressbar"
+						style="width: {progress.percentage}%"
+						aria-valuenow={progress.percentage}
+						aria-valuemin="0"
+						aria-valuemax="100"
+					>
+						{Math.round(progress.percentage)}%
+					</div>
+				</div>
+				<p class="text-muted">Processing {progress.current}/{progress.total}</p>
+			</div>
+		{/if}
+
+		{#if task_run_status}
+			<div class="text-primary">{task_run_status}</div>
 		{/if}
 	</div>
-	<div class="p-2">
+
+	<!-- Center section: Loader -->
+	<!-- <div class="me-3">
+				{#if task_running}
+					<div class="loader"></div>
+				{/if}
+			</div> -->
+
+	<!-- Right section: Buttons -->
+	<div class="d-flex flex-column">
 		<button
-			class="btn btn-success"
-			disabled={task_running ? 'disable' : error ? 'disable' : ''}
+			class="btn btn-lg btn-success mb-2"
+			disabled={task_running || error}
 			onclick={inference_pipeline}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				width="16"
-				height="16"
+				width="30"
+				height="30"
 				fill="currentColor"
 				class="bi bi-play-fill"
 				viewBox="0 0 16 16"
@@ -295,18 +295,9 @@
 			</svg>
 			Run
 		</button>
-	</div>
-</div>
 
-<div class="d-flex border-bottom1 mb-2">
-	<div class="p-2 flex-grow-1">
-		{#if task_run_status}
-			<span class="text-primary"> {task_run_status} </span>
-		{/if}
-	</div>
-	<div class="p-2">
 		{#if task_running}
-			<div class="loader"></div>
+			<button class="btn btn-link" onclick={cancel_pipeline}> Cancel </button>
 		{/if}
 	</div>
 </div>
@@ -322,5 +313,9 @@
 		50% {
 			background-position: right;
 		}
+	}
+
+	.progress {
+		height: 8px;
 	}
 </style>

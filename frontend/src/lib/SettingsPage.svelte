@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getAllSettings, saveAllSettings } from './settings.js';
+  import { getAllSettings, saveAllSettings } from './utils/settings.js';
   import axios from 'axios';
   let settings = $state({});
 
