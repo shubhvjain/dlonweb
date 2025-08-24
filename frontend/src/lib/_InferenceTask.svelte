@@ -1,52 +1,60 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { Library, Data } from 'dlonwebjs';
+
+	import { Library,Data, InferenceTask } from 'dlonwebjs';
+	import {adaptor} from "$lib/utils/adapter.browser"
+
 	import { translations, userSettings } from '$lib/utils/store.js';
 	import Input from './_Input.svelte';
 	import { InferencePipeline } from '$lib/utils/inferencePipeline.js';
 	import { filesStore } from '$lib/utils/filesStorage';
 	import { get } from 'svelte/store';
 
-	let { model_valid = $bindable(false), model_name, on_emit_output } = $props();
+	/**
+	 * The Component inputs  includes :
+	 * - `component_valid` : a bindable flag that indicates if the model is valid or not
+	 * - `model_name` : to select a model name by default
+	 * - `emit_output` : this is a method that other components can use to get the output of the model
+	 */
+	let { component_valid = $bindable(false), model_name, on_emit_output } = $props();
 
+	// to manage the over component
+	let error = $state('');
+	let loaded = $state(false);
+	let status = $state({ type: 'danger', text: '' });
+	const set_error = (text) => {
+		status = { type: 'danger', text };
+	};
+	const set_success = (text) => {
+		status = { type: 'success', text };
+	};
+
+	let dev_mode = $state(true)
+
+	// To manage input
 	let input_valid = $state(false);
 	let input_data = $state([]);
 	let input_options = $state({});
-	let worker = $state();
-	let error = $state('');
-	let progress = $state({ current: 0, total: 0, percentage: 0 });
-	let status = $state('');
-	let model_details = $state({ title: '', description: '' });
-	let modelList = $state([]);
-	let loaded = $state(false);
-	let select_model = $state('');
-	let select_location = $state('browser');
+
+	// To manage model
+	let selected_model = $state(''); // name of the selected model
 	let custom_model_used = $state(false);
+	let model_details = $state({ title: '', description: '' });
+	let modelList = $state([]); // list of all models in the library
+
+	// To manage model running
+	let worker = $state();
+	let progress = $state({ current: 0, total: 0, percentage: 0 });
+	let select_location = $state('browser');
 	let task_running = $state(false);
 	let task_run_status = $state('');
-	let output = $state();
 	let pipeline = $state();
 
-	const on_input_valid = (opt) => {
-		input_valid = opt.data_valid;
-		console.log(opt);
-		if (input_valid) {
-			input_data = $state.snapshot(filesStore);
-			console.log(input_data);
-			input_options = opt.options;
-		}
-		check_valid();
-	};
+	// output of the model
+	let output = $state();
 
 	onMount(async () => {
-		await load_model_list();
-
-		if (model_name) {
-			await load_selected_model(model_name);
-			select_model = model_name;
-		}
-
-		loaded = true;
+		await load_page();
 	});
 
 	onDestroy(() => {
@@ -55,37 +63,83 @@
 		}
 	});
 
+	/**
+	 * to load the component
+	 */
+	const load_page = async () => {
+		await load_model_list();
+		if (model_name) {
+			await select_model(model_name);
+			selected_model = model_name;
+		}
+		loaded = true;
+	};
+
+	/**
+	 * This method is bound to the on_input_emit of the _Input component.
+	 * It updates the input files uploaded by the user, other input related options and a flag to indicate if input is valid overall
+	 * @param opt
+	 *
+	 */
+	const on_input_valid = (opt) => {
+		input_valid = opt.data_valid;
+		// console.log(opt);
+		if (input_valid) {
+			input_data = $state.snapshot(filesStore);
+			//console.log(input_data);
+			input_options = opt.options;
+		}
+		check_valid();
+	};
+
+	/**
+	 *  check if the component as a whole is in a valid state.
+	 * this has 2 aspects: the model and the input data
+	 */
 	const check_valid = () => {
 		let er = [];
-		if (!select_model) {
+		if (!selected_model) {
 			er.push('No model selected for inference task');
-			model_valid = false;
+			//component_valid = false;
 		}
 		if (!input_valid) {
 			er.push('Input is not valid');
 		}
-		error = er.join(', \n');
-		model_valid = er.length === 0;
+		//error = er.join(', \n');
+		if (er.length > 0) {
+			set_error(er.join(', \n'));
+		} else {
+			set_success('');
+		}
+		component_valid = er.length === 0;
 	};
 
+	/**
+	 * Loads the list of model and its metadata from the model library.
+	 */
 	const load_model_list = async () => {
 		modelList = await Library.get_model_list();
 	};
 
-	const load_selected_model = async (name) => {
+	/**
+	 * To select a model
+	 * @param name the model name
+	 */
+	const select_model = async (name) => {
 		if (name === 'custom') {
-			model_valid = false;
+			component_valid = false;
 			custom_model_used = true;
 			error = 'Upload your model files (.json + .bin)';
 		} else {
 			custom_model_used = false;
 			model_details = modelList.find((itm) => itm.value === name);
-			model_valid = true;
+			component_valid = true;
 			error = '';
 		}
 		check_valid();
 	};
 
+	// TODO use derive instead
 	$effect(() => {
 		check_valid();
 	});
@@ -94,19 +148,18 @@
 		return JSON.parse(JSON.stringify(jsn));
 	};
 
-	// Start the inference pipeline
+	/**
+	 * To run the inference pipeline
+	 */
 	const inference_pipeline = async () => {
-		if (!select_model || !input_valid) {
-			task_run_status = 'Model or input invalid';
-			return;
-		}
-
-		task_running = true;
-		progress = { current: 0, total: 0, percentage: 0 };
-		error = '';
-		task_run_status = 'Initializing...';
-
 		try {
+			if (!selected_model || !input_valid) {
+				throw new Error('Model or input invalid')
+			}
+			task_running = true;
+			progress = { current: 0, total: 0, percentage: 0 };
+			set_success("Initializing")
+			
 			// Create worker if not already exists
 			if (!worker) {
 				worker = new Worker(new URL('$lib/utils/inference.worker.js', import.meta.url), {
@@ -114,11 +167,16 @@
 				});
 			}
 
+
 			// Create or recreate pipeline
-			pipeline = new InferencePipeline(select_location, 'web_worker', worker);
+			pipeline = new InferencePipeline()
 
-			task_run_status = 'Loading model...';
+			//select_location, 'web_worker', worker);
 
+			//set_success("Checking model")
+			//await pipeline.load_input(input_data,input_options)
+
+			
 			// Progress callback
 			const onProgress = (p) => {
 				progress = {
@@ -126,46 +184,53 @@
 					total: p.total,
 					percentage: p.total > 0 ? (p.current / p.total) * 100 : 0
 				};
-				task_run_status = `Processing ${p.current}/${p.total}`;
+				set_success(`Processing ${p.current}/${p.total}`);
 			};
 
-			task_run_status = 'Processing Input';
 
+
+			//set_success('Loading Input')
 			// Run inference
 			const filesArray = Array.from(get(filesStore));
-
 			if (filesArray.length == 0) {
 				throw new Error('No input files available');
 			}
+			
+			//await pipeline.load_input(input_data,input_options)
+			//set_success("Files loaded successfully")
+
 
 			/*
     inputFiles = [],
 		modelDetails = { name: '', model: null },
 		runOptions = { location: 'browser', mode: 'web_worker', worker: null },
 		onProgress = () => {}
-    
     */
 
 			output = await pipeline.run(
 				filesArray,
-				sanitizeJSON({ name: select_model }),
+				sanitizeJSON({ name: selected_model }),
 				{ location: 'browser', mode: 'main_thread' },
 				onProgress
 			);
 
 			task_run_status = 'Inference completed!';
 			console.log('Pipeline output:', output);
-		} catch (err) {
-			console.error('Pipeline error:', err);
-			error = `Pipeline failed: ${err.message}`;
-			task_run_status = 'Pipeline failed';
-		} finally {
 			task_running = false;
-			// Reset progress after a delay to show completion
-			setTimeout(() => {
-				progress = { current: 0, total: 0, percentage: 0 };
-			}, 2000);
-		}
+		} catch (err) {
+			task_running = false;
+			set_error(`Pipeline failed: ${err.message}`)
+
+			console.error('Pipeline error:', err);
+			// error = `Pipeline failed: ${err.message}`;
+		} 
+		// finally {
+			
+		// 	// Reset progress after a delay to show completion
+		// 	setTimeout(() => {
+		// 		progress = { current: 0, total: 0, percentage: 0 };
+		// 	}, 2000);
+		// }
 	};
 
 	// Cancel the running pipeline
@@ -181,6 +246,83 @@
 			}, 500);
 		}
 	};
+
+
+  const simple_inference_run = async () => {
+    // 1. Create worker
+    const worker = new Worker(
+      new URL('$lib/utils/inference.worker.js', import.meta.url),
+      { type: 'module' }
+    );
+
+
+		const filesArray = Array.from(get(filesStore));
+			if (filesArray.length == 0) {
+				throw new Error('No input files available');
+			}
+			let testdata = new Data(adaptor,filesArray, sanitizeJSON(input_options))
+			await testdata.load()
+			console.log("data loaded")
+			console.log(testdata)
+
+
+		
+			 // e.g., file input element
+    //let data = new Data(adaptor,filesArray,input_options)
+    //await data.load();
+
+    // 3. Create InferenceTask using worker mode
+    const task = new InferenceTask({
+      env: adaptor,
+      model_name: selected_model, // example
+      run_mode: 'web_worker',
+      worker
+    });
+
+    // 4. Load data into task (main thread, tensors created in main thread)
+    await task.load_data(testdata);
+
+    // 5. Run inference
+    task.run_model(
+      (p) => {
+        // progress = p; // update Svelte reactive variable
+				console.log(p)
+      }
+    ).then((outputMap) => {
+			console.log(outputMap)
+      //results = outputMap;
+      console.log('Inference complete', outputMap);
+      worker.terminate(); // cleanup worker
+    }).catch((err) => {
+			console.log(err)
+      console.error('Inference error', err);
+      worker.terminate();
+    });
+  };
+
+
+	const test_tensor_generation = async ()=>{
+		try {
+			console.log("testing data")
+			const filesArray = Array.from(get(filesStore));
+			if (filesArray.length == 0) {
+				throw new Error('No input files available');
+			}
+			let testdata = new Data(adaptor,filesArray,input_options)
+			await testdata.load()
+			console.log("data loaded")
+			console.log(testdata)
+
+			let model_details = await Library.get_model_options(selected_model)			
+			console.log(model_details)
+
+			await testdata.create_tensors(selected_model,model_details)
+			console.log(testdata)
+
+		} catch (error) {
+			console.log(error)
+		}
+	}
 </script>
 
 <div class="p-1 mb-2 pt-2">
@@ -190,8 +332,8 @@
 	<select
 		class="form-select form-select-lg mb-2"
 		aria-label="select model"
-		onchange={() => load_selected_model(select_model)}
-		bind:value={select_model}
+		onchange={() => select_model(selected_model)}
+		bind:value={selected_model}
 	>
 		<option value="" selected>Select</option>
 		{#each modelList as m}
@@ -206,7 +348,7 @@
 		</div>
 	{/if}
 
-	{#if select_model}
+	{#if selected_model}
 		<div class="alert alert-light" role="alert">
 			<p>{model_details.description[$userSettings['language']]}</p>
 		</div>
@@ -240,8 +382,8 @@
 <div class="d-flex align-items-center p-1 border-top pt-4">
 	<!-- Left section: Error / Progress / Status -->
 	<div class="flex-grow-1 me-3">
-		{#if error}
-			<div class="text-danger mb-2">{error}</div>
+		{#if status.text}
+			<div class="text-{status.type} mb-2">{status.text}</div>
 		{/if}
 
 		{#if task_running && progress.total > 0}
@@ -266,13 +408,6 @@
 			<div class="text-primary">{task_run_status}</div>
 		{/if}
 	</div>
-
-	<!-- Center section: Loader -->
-	<!-- <div class="me-3">
-				{#if task_running}
-					<div class="loader"></div>
-				{/if}
-			</div> -->
 
 	<!-- Right section: Buttons -->
 	<div class="d-flex flex-column">
@@ -301,6 +436,18 @@
 		{/if}
 	</div>
 </div>
+
+{#if dev_mode}
+	<div>
+		<button class="btn btn-link" onclick={test_tensor_generation}> Test tensor generation </button>
+
+		
+
+		<button class="btn btn-link" onclick={simple_inference_run}> run simple </button>
+
+	</div>
+{/if}
+
 
 <style>
 	.loader {

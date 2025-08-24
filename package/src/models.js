@@ -1,126 +1,115 @@
-
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
 
 export class Library {
+  /**
+   * Static metadata registry for available projects/models.
+   * Can be extended or replaced by external JSON config.
+   */
   static data = {
-    "projects":{
-      "tf":{
-        "list":false,
-        "title_short":"Tensorflow",
-        "website":"https://cocodataset.org",
-        "models":{
-          "coco-ssd":{
-            "active":true,
-            "type":"object_detection",
-            "model_input":["image"],
-            model_input_options:{
+    projects: {
+      tf: {
+        list: false,
+        title_short: "Tensorflow",
+        website: "https://cocodataset.org",
+        models: {
+          "coco-ssd": {
+            active: true,
+            type: "object_detection",
+            model_input: ["image"],
+            model_input_options: {
               normalize: false,
               addBatchDim: false,
             },
-            "model_output":"bounding_boxes",
-            "title":"Detect general objects in an image",
-            "path":""
-          } 
-        }
+            model_output: "bounding_boxes",
+            title: {
+              en: "Detect objects in images",
+              de: "Objekte in Bildern erkennen",
+            },
+            description: {
+              en: "Upload an image and the model will highlight and label common objects such as people, cars, or animals. Input: JPG/PNG image. Output: Detected objects with bounding boxes.",
+              de: "Laden Sie ein Bild hoch, und das Modell markiert und benennt gängige Objekte wie Personen, Autos oder Tiere. Eingabe: JPG/PNG-Bild. Ausgabe: Erkannte Objekte mit Begrenzungsrahmen.",
+            },
+            path: "",
+          },
+        },
       },
-      // "deepd3": {
-      //   "list":true,
-      //   "title_short": "DeepD3 ",
-      //   "title": "DeepD3 (A Deep Learning Framework for Detection of Dendritic Spines and Dendrites)",
-      //   "source":"Fernholz, M. H. P., Guggiana Nilo, D. A., Bonhoeffer, T., & Kist, A. M. (2024). DeepD3, an open framework for automated quantification of dendritic spines. In M. H. Hennig (Ed.), PLOS Computational Biology (Vol. 20, Issue 2, p. e1011774). Public Library of Science (PLoS). https://doi.org/10.1371/journal.pcbi.1011774",
-      //   "description":"Pre trained models to perform semantic segmentation of dendrites and dendrite spines in microscopy data",
-      //   "website": "https://deepd3.forschung.fau.de/",
-      //   "model_input": "Microscopy image stack in TIF/TIFF format",
-      //   "model_output":"Segmented stack with dendrites and dendritic spines",
-      //   "models": {
-      //     "8f": {
-      //       "title": "Dendritic spine image segmentation for 8 base filters",
-      //       "type":"segment_image",
-      //       "input_type": "tiff",
-      //       "input_help":"",
-      //       "output_type": "tiff",
-      //       "path": "library/DeepD3_8F"
-      //     },
-      //     "16f": {
-      //       "title": "Dendritic spine image segmentation for 16 base filters",
-      //       "input_type": "tiff",
-      //       "type":"segment_image",
-      //       "path": "library/DeepD3_8F"
-      //     },
-      //       "32f": {
-      //       "title": "Dendritic spine image segmentation for 32 base filters",
-      //       "input_type": "tiff",
-      //       "type":"segment_image",
-      //       "path": "library/DeepD3_8F"
-      //     }
-      //   }
-      // },
-      "bagls":{
-        "list":true,
-        "title_short":"BAGLS",
-        "title":"Benchmark for Automatic Glottis Segmentation (BAGLS)",
-        "source":"Gómez, P., Kist, A.M., Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3",
-        "description":" ",
-        "website":"https://www.bagls.org/",
-        "models":{
-          "segment":{
-            "active":true,
-            "type":"object_detection",
-            "model_input":["image","video"],
-            model_input_options:{
-              //resize: [256, 256],  
+
+      bagls: {
+        list: true,
+        title_short: "BAGLS",
+        title: "Benchmark for Automatic Glottis Segmentation (BAGLS)",
+        website: "https://www.bagls.org/",
+        models: {
+          segment: {
+            active: true,
+            type: "segment_image",
+            model_input: ["image", "video"],
+            model_input_options: {
+              inputShape: [1, 256, 256, 3],
+              dtype: "float32",
               normalize: true,
               addBatchDim: true,
-              //dtype: 'float32'
             },
-            "model_output":"image_segmentation",
-            "title":"Glottis Segmentation on Endoscopy data",
-            "path":"library/bagls_rgb",
-            "type":"segment_image",
+            model_output: "image_segmentation",
+            title: {
+              en: "Segment glottis in endoscopy data",
+              de: "Glottis in Endoskopie-Daten segmentieren",
+            },
+            description: {
+              en: "Upload endoscopy images or videos and the model will automatically outline the glottis region. Input: Image/Video. Output: Segmentation mask showing glottis area.",
+              de: "Laden Sie Endoskopie-Bilder oder -Videos hoch, und das Modell markiert automatisch den Glottisbereich. Eingabe: Bild/Video. Ausgabe: Segmentierungsmaske mit Glottisbereich.",
+            },
+            path: "library/bagls_rgb",
           },
-          // "new":{
-          //   "title":"Segment Endoscopic Image using BAGLS v2",
-          //   "path":"library/bagls_new",
-          //   "type":"segment_image",
-          // }
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  };
 
-  static async loadData() {
-    // if (!this.data) {
-    //   const response = await fetch('models.json');
-    //   if (!response.ok) throw new Error('Failed to load model.json');
-    //   this.data = await response.json();
-    // }
+  /**
+   * Load static or remote model registry.
+   */
+  static async load_data() {
+    // Future: replace with fetch if external registry is needed
     return this.data;
   }
 
+  /**
+   * Return a flattened list of all models across projects.
+   * Useful for building dropdowns or UIs.
+   */
   static async get_model_list() {
-    const data = await this.loadData();
+    const data = await this.load_data();
     const result = [];
+
     for (const [projectKey, project] of Object.entries(data.projects)) {
       if (!project.models) continue;
-      for (const [modelKey,model] of Object.entries(project.models)) {
-        const label = `${model.title} (${projectKey}.${modelKey})`;
-        const value = `${projectKey}.${modelKey}`;
-        result.push({ label, value, type : model.type });
+      for (const [modelKey, model] of Object.entries(project.models)) {
+        result.push({
+          label: model.title,
+          value: `${projectKey}.${modelKey}`,
+          type: model.type,
+          description: model.description,
+        });
       }
     }
     return result;
   }
 
+  /**
+   * Get a model definition object by project/model key.
+   * @param {string|array} args - "project.model" or [project, model]
+   */
   static async get_model(...args) {
-    const data = await this.loadData();
+    const data = await this.load_data();
     let projectKey, modelKey;
 
     if (args.length === 1) {
-      [projectKey, modelKey] = args[0].split('.');
+      [projectKey, modelKey] = args[0].split(".");
     } else if (args.length === 2) {
       [projectKey, modelKey] = args;
     } else {
-      throw new Error('Invalid arguments');
+      throw new Error("Invalid arguments: must be 'project.model' or [project, model]");
     }
 
     const project = data.projects[projectKey];
@@ -129,77 +118,64 @@ export class Library {
     return project.models[modelKey] || null;
   }
 
-    /**
-   * Load a model either via `coco-ssd` or using `env.tf.loadLayersModel`
-   * @param {object} env - injected environment with at least tf
+  /**
+   * Load a TensorFlow.js model.
+   * Supports both prepackaged models (like coco-ssd) and custom paths.
+   * @param {object} env - injected environment with tf + path resolver
    * @param {string} modelKey - full key like "tf.coco-ssd"
    */
-    static async loadModel(env, modelKey) {
-      if (!env || !env.tf) throw new Error("env with tf required");
-      if(!env.resolveModelLibraryPath){throw new Error("env with resolveModelLibraryPath required")}
-      const modelInfo = await this.get_model(modelKey);
-      
-      if (!modelInfo) throw new Error(`Model not found: ${modelKey}`);
-  
-      if (modelKey === "tf.coco-ssd") {
-        return await cocoSsd.load();
-      }
-      if (modelInfo.path) {
-        const basePath = env.resolveModelLibraryPath()
-        console.log(basePath)
-        const modelUrl = `${basePath}${modelInfo.path}/model.json`; // customize base path if needed
-        return await env.tf.loadLayersModel(modelUrl);
-      }
-  
-      throw new Error(`No valid loader for model: ${modelKey}`);
+  static async load_model(env,basePath, modelKey) {
+    if (!env || !env.tf) throw new Error("env with tf required");
+   
+    const modelInfo = await this.get_model(modelKey);
+    if (!modelInfo) throw new Error(`Model not found: ${modelKey}`);
+
+    // Special case for prebuilt models
+    if (modelKey === "tf.coco-ssd") {
+      return await cocoSsd.load();
     }
 
-    static getModelOptions(modelName, model) {
-      if (modelName === "tf.coco-ssd") {
-        return {
-          inputShape: [1, -1,-1, 3],  // batch size 1, 
-          dtype: 'int32',                // coco-ssd expects int32 pixels
-          normalize: false,              // no normalization for coco-ssd
-          addBatchDim: false             // inputs already include batch dim
-        };
-      }
-    
-      // Generic inference for other models
-      if (model && model.inputs && model.inputs.length > 0) {
-        const inputTensor = model.inputs[0];
-        const inputShape = inputTensor.shape.map(dim => (dim === null ? 1 : dim));
-        const dtype = inputTensor.dtype || 'float32';
-    
-        // Usually, model inputs include batch dim as the first dimension
-        // We'll check if the first dimension is 1 (batch size)
-        // But in general, inputShape length includes batch dim
-    
-        // So to determine if you need to add batch dim:
-        // If model expects rank 4 (e.g. [batch, h, w, c])
-        // but inputShape first dimension is 1, then input tensor should have batch dim
-        // The question is: do you have an input tensor without batch dim? 
-        // We can't detect that here, but we return a flag indicating model expects batch dim.
-    
-        // So addBatchDim = true if model input shape length > 3
-        const addBatchDim = inputShape.length > 3;
-    
-        const normalize = (dtype === 'float32');
-    
-        return {
-          inputShape,
-          dtype,
-          normalize,
-          addBatchDim
-        };
-      }
-    
-      // fallback default
+    // Otherwise use standard tf.loadLayersModel
+    if (modelInfo.path) {
+     // const basePath = env.resolveModelLibraryPath();
+      const modelUrl = `${basePath}${modelInfo.path}/model.json`;
+      return await env.tf.loadLayersModel(modelUrl);
+    }
+
+    throw new Error(`No valid loader for model: ${modelKey}`);
+  }
+
+  /**
+   * Get canonical input options for a model.
+   * Used to normalize data preparation across different models.
+   */
+  static get_model_options(modelName, model) {
+    if (modelName === "tf.coco-ssd") {
       return {
-        inputShape: [1, 224, 224, 3],
-        dtype: 'float32',
-        normalize: true,
-        addBatchDim: true
+        inputShape: [1, -1, -1, 3], // batch size 1
+        dtype: "int32",             // coco-ssd expects int32
+        normalize: false,
+        addBatchDim: false,
       };
     }
 
+    // Generic case for TF.js LayersModel
+    if (model && model.inputs && model.inputs.length > 0) {
+      const inputTensor = model.inputs[0];
+      const inputShape = inputTensor.shape.map((dim) => (dim === null ? 1 : dim));
+      const dtype = inputTensor.dtype || "float32";
+      const addBatchDim = inputShape.length > 3;
+      const normalize = dtype === "float32";
+
+      return { inputShape, dtype, normalize, addBatchDim };
+    }
+
+    // Fallback default
+    return {
+      inputShape: [1, 224, 224, 3],
+      dtype: "float32",
+      normalize: true,
+      addBatchDim: true,
+    };
+  }
 }

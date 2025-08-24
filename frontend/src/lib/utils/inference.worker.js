@@ -1,252 +1,91 @@
 // inference.worker.js
 import * as tf from "@tensorflow/tfjs";
-import { Library } from 'dlonwebjs';
+import { Library } from "dlonwebjs"; // adjust path if needed
 
-// Cache loaded models to avoid reloading
-const modelCache = {};
-let currentTask = null;
-let cancelled = false;
+// Keep a cache of loaded models
+const loadedModels = {};
 
 /**
- * Convert a plain object back into a tf.Tensor.
+ * Reconstruct a tf.Tensor from a serialized object
+ * @param {Object} obj { buffer, shape, dtype }
+ * @returns {tf.Tensor}
  */
-function tensorFromObject(obj) {
-  if (!obj || typeof obj !== 'object' || !obj.data) {
-    throw new Error('Invalid tensor object');
+function deserializeTensor(obj) {
+  if (!obj || !obj.buffer || !obj.shape || !obj.dtype)
+    throw new Error("Invalid serialized tensor");
+
+  let typedArray;
+  switch (obj.dtype) {
+    case "float32":
+      typedArray = new Float32Array(obj.buffer);
+      break;
+    case "int32":
+      typedArray = new Int32Array(obj.buffer);
+      break;
+    default:
+      throw new Error(`Unsupported dtype: ${obj.dtype}`);
   }
-  return tf.tensor(obj.data, obj.shape, obj.dtype);
+
+  return tf.tensor(typedArray, obj.shape, obj.dtype);
 }
 
 /**
- * Convert a tf.Tensor into a plain transferable object.
+ * Worker message handler
  */
-async function tensorToObject(tensor) {
-  if (!tensor || typeof tensor.data !== 'function') {
-    throw new Error('Invalid tensor for conversion');
-  }
-  const data = await tensor.data();
-  return { 
-    data: Array.from(data), 
-    shape: tensor.shape, 
-    dtype: tensor.dtype 
-  };
-}
+self.onmessage = async (e) => {
+  const msg = e.data;
 
-/**
- * Process a single input file
- */
-async function processInput(name, inputObj, model, modelName, onProgress) {
-  if (cancelled) {
-    throw new Error('Task cancelled');
-  }
-
-  let tensors;
-  
-  // Handle tensor conversion
-  if (Array.isArray(inputObj.input_tensor)) {
-    tensors = inputObj.input_tensor.map(t => {
-      if (t?.data) return tensorFromObject(t);
-      return t;
-    });
-  } else {
-    const tensor = inputObj.input_tensor?.data 
-      ? tensorFromObject(inputObj.input_tensor) 
-      : inputObj.input_tensor;
-    tensors = [tensor];
-  }
-
-  // Process each tensor
-  const results = [];
-  for (let i = 0; i < tensors.length; i++) {
-    if (cancelled) {
-      // Clean up tensors
-      tensors.forEach(t => {
-        if (t && typeof t.dispose === 'function') t.dispose();
-      });
-      throw new Error('Task cancelled');
-    }
-
-    const tensor = tensors[i];
-    let output;
+  if (msg.type === "run_inference") {
+    const { model_name, model_files, model_meta, input_map, basePath } = msg;
 
     try {
-      // Run model inference based on model type
-      if (modelName === "custom") {
-        output = model.predict(tensor);
-      } else if (modelName === "tf.coco-ssd") {
-        output = await model.detect(tensor);
-      } else {
-        output = model.predict(tensor);
+      // 1️⃣ Load the model if not already loaded
+      let model = loadedModels[model_name];
+      if (!model) {
+        // Provide tf + resolveModelLibraryPath stub
+        model = await Library.load_model({tf}, basePath,model_name);
+        loadedModels[model_name] = model;
       }
 
-      // Convert output to transferable format
-      if (output instanceof tf.Tensor) {
-        const converted = await tensorToObject(output);
-        output.dispose(); // Clean up tensor
-        results.push(converted);
-      } else {
-        results.push(output);
-      }
-    } catch (error) {
-      // Clean up on error
-      if (tensor && typeof tensor.dispose === 'function') {
-        tensor.dispose();
-      }
-      throw error;
-    }
-  }
+      const keys = Object.keys(input_map);
+      const output_map = {};
 
-  // Clean up input tensors
-  tensors.forEach(t => {
-    if (t && typeof t.dispose === 'function') {
-      t.dispose();
-    }
-  });
+      // 2️⃣ Run inference per key
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const entry = input_map[key];
 
-  return Array.isArray(inputObj.input_tensor) ? results : results[0];
-}
+        // Reconstruct tensor(s) from serialized buffers
+        const tensors = Array.isArray(entry.input_tensor)
+          ? entry.input_tensor.map(deserializeTensor)
+          : deserializeTensor(entry.input_tensor);
 
-// Listen for messages
-self.onmessage = async (event) => {
-  const { type, payload, id } = event.data;
+        let output;
+        if (model_name === "tf.coco-ssd" && model.detect) {
+          output = await model.detect(tensors);
+        } else if (model.predict) {
+          output = model.predict(tensors);
+        } else {
+          throw new Error(`Cannot run model: ${model_name}`);
+        }
 
-  try {
-    // 1️⃣ INIT → send READY
-    if (type === "INIT") {
-      cancelled = false;
-      self.postMessage({ type: "READY" });
-      return;
-    }
+        output_map[key] = {
+          output,
+          results: entry.results,
+          derived: entry.derived
+        };
 
-    // 2️⃣ CANCEL → stop current task
-    if (type === "CANCEL") {
-      cancelled = true;
-      currentTask = null;
-      self.postMessage({ 
-        type: "ERROR", 
-        data: { error: "Task cancelled" }, 
-        id 
-      });
-      return;
-    }
-
-    // 3️⃣ RUN_INFERENCE → process inputs
-    if (type === "RUN_INFERENCE") {
-      currentTask = id;
-      cancelled = false;
-      
-      const { inputFiles, modelName, options, location } = payload;
-
-      if (!inputFiles || !modelName) {
+        // 3️⃣ Send progress update
         self.postMessage({
-          type: "ERROR",
-          data: { error: "Missing required parameters: inputFiles or modelName" },
-          id
+          type: "progress",
+          percent: Math.round(((i + 1) / keys.length) * 100)
         });
-        return;
       }
 
-      try {
-        // Load or reuse model
-        if (!modelCache[modelName]) {
-          if (modelName === "custom") {
-            if (!inputFiles.modelPath && !inputFiles.model) {
-              throw new Error("Custom model requires modelPath or model data");
-            }
-            modelCache[modelName] = await tf.loadLayersModel(inputFiles.modelPath || inputFiles.model);
-          } else {
-            modelCache[modelName] = await Library.loadModel({ tf }, modelName);
-          }
-        }
-
-        const model = modelCache[modelName];
-        if (!model) {
-          throw new Error(`Failed to load model: ${modelName}`);
-        }
-
-        const output_data_map = {};
-        const inputKeys = Object.keys(inputFiles).filter(key => 
-          key !== 'modelPath' && key !== 'model' && inputFiles[key]
-        );
-
-        if (inputKeys.length === 0) {
-          throw new Error("No valid input files found");
-        }
-
-        // Process each input file
-        for (let i = 0; i < inputKeys.length; i++) {
-          if (cancelled || currentTask !== id) {
-            throw new Error("Task cancelled");
-          }
-
-          const name = inputKeys[i];
-          const inputObj = inputFiles[name];
-
-          if (!inputObj || !inputObj.input_tensor) {
-            console.warn(`Skipping invalid input: ${name}`);
-            continue;
-          }
-
-          try {
-            const result = await processInput(name, inputObj, model, modelName);
-            
-            output_data_map[name] = {
-              output_tensor: result,
-            };
-
-            // Send progress update
-            self.postMessage({
-              type: "PROGRESS",
-              data: { current: i + 1, total: inputKeys.length },
-              id
-            });
-
-          } catch (inputError) {
-            console.error(`Error processing input ${name}:`, inputError);
-            // Continue with other inputs, but log the error
-            output_data_map[name] = {
-              error: inputError.message,
-              output_tensor: null
-            };
-          }
-        }
-
-        // Check if we have any successful results
-        const hasResults = Object.values(output_data_map).some(result => 
-          result.output_tensor !== null && !result.error
-        );
-
-        if (!hasResults) {
-          throw new Error("No inputs were successfully processed");
-        }
-
-        // Send completion
-        self.postMessage({ 
-          type: "COMPLETE", 
-          data: { result: output_data_map }, 
-          id 
-        });
-
-      } catch (err) {
-        console.error('Inference error:', err);
-        self.postMessage({ 
-          type: "ERROR", 
-          data: { error: err.message }, 
-          id 
-        });
-      } finally {
-        if (currentTask === id) {
-          currentTask = null;
-        }
-      }
+      // 4️⃣ Send final output
+      self.postMessage({ type: "done", output_map });
+    } catch (err) {
+      self.postMessage({ type: "error", error: err.message || String(err) });
     }
-
-  } catch (globalError) {
-    console.error('Worker global error:', globalError);
-    self.postMessage({ 
-      type: "ERROR", 
-      data: { error: globalError.message || 'Unknown worker error' }, 
-      id 
-    });
   }
 };
