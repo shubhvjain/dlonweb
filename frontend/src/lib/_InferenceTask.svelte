@@ -248,57 +248,61 @@
 	};
 
 
-  const simple_inference_run = async () => {
-    // 1. Create worker
-    const worker = new Worker(
-      new URL('$lib/utils/inference.worker.js', import.meta.url),
-      { type: 'module' }
-    );
+	let workerRef = $state()
+	const simple_inference_run = async () => {
+  // 1) create worker
+  const worker = new Worker(
+    new URL('$lib/utils/inference.worker.js', import.meta.url),
+    { type: 'module' }
+  );
+  workerRef = worker;
 
+  try {
+    // 2) gather files
+    const filesArray = Array.from(get(filesStore) || []);
+    if (filesArray.length === 0) {
+      throw new Error('No input files available');
+    }
 
-		const filesArray = Array.from(get(filesStore));
-			if (filesArray.length == 0) {
-				throw new Error('No input files available');
-			}
-			let testdata = new Data(adaptor,filesArray, sanitizeJSON(input_options))
-			await testdata.load()
-			console.log("data loaded")
-			console.log(testdata)
+    // 3) build Data (preprocess on load)
+    const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
+    await data.load(); // processFile runs here (video → frames)
+    console.log('Data loaded:', data);
 
-
-		
-			 // e.g., file input element
-    //let data = new Data(adaptor,filesArray,input_options)
-    //await data.load();
-
-    // 3. Create InferenceTask using worker mode
+    // 4) prepare task (web worker mode)
+		console.log(selected_model)
     const task = new InferenceTask({
-      env: adaptor,
-      model_name: selected_model, // example
+      env: adaptor,                 // must include tf + basePath
+      model_name: selected_model,   // e.g. "tf.coco-ssd" or "bagls.segment"
       run_mode: 'web_worker',
       worker
     });
 
-    // 4. Load data into task (main thread, tensors created in main thread)
-    await task.load_data(testdata);
+		console.log("InferenceTask loaded")
 
-    // 5. Run inference
-    task.run_model(
-      (p) => {
-        // progress = p; // update Svelte reactive variable
-				console.log(p)
-      }
-    ).then((outputMap) => {
-			console.log(outputMap)
-      //results = outputMap;
-      console.log('Inference complete', outputMap);
-      worker.terminate(); // cleanup worker
-    }).catch((err) => {
-			console.log(err)
-      console.error('Inference error', err);
-      worker.terminate();
+    // 5) tensors are created on the main thread (per our design)
+    await task.load_data(data);
+		console.log("data inside InferenceTask loaded")
+
+    // 6) run inference (progress callback optional)
+    const outputMap = await task.run_model((percent) => {
+      // update progress UI; throttle if noisy
+      console.log('progress:', percent, '%');
     });
-  };
+
+    console.log('Inference complete:', outputMap);
+
+    // TODO: integrate outputMap back into your Data or UI
+    // e.g., data.add_results(key, selected_model, outputPerKey)
+
+  } catch (err) {
+    console.error('Inference error:', err);
+  } finally {
+    // 7) always cleanup worker
+    try { worker.terminate(); } catch {}
+    if (workerRef === worker) workerRef = null;
+  }
+};
 
 
 	const test_tensor_generation = async ()=>{

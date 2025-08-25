@@ -1,91 +1,143 @@
 // inference.worker.js
-import * as tf from "@tensorflow/tfjs";
-import { Library } from "dlonwebjs"; // adjust path if needed
+import * as tf from '@tensorflow/tfjs';
+import { Library } from 'dlonwebjs'; // adjust path if needed
 
-// Keep a cache of loaded models
+// cache loaded models by name
 const loadedModels = {};
 
-/**
- * Reconstruct a tf.Tensor from a serialized object
- * @param {Object} obj { buffer, shape, dtype }
- * @returns {tf.Tensor}
- */
+/** Reconstruct a tf.Tensor from a serialized object { buffer, shape, dtype } */
 function deserializeTensor(obj) {
-  if (!obj || !obj.buffer || !obj.shape || !obj.dtype)
+  if (!obj || !obj.buffer || !obj.shape || !obj.dtype) {
     throw new Error("Invalid serialized tensor");
+  }
+  const offset = obj.byteOffset || 0;
+  const length = obj.length; // number of elements
 
-  let typedArray;
+  let typed;
   switch (obj.dtype) {
     case "float32":
-      typedArray = new Float32Array(obj.buffer);
+      typed = (typeof length === "number")
+        ? new Float32Array(obj.buffer, offset, length)
+        : new Float32Array(obj.buffer);
       break;
     case "int32":
-      typedArray = new Int32Array(obj.buffer);
+      typed = (typeof length === "number")
+        ? new Int32Array(obj.buffer, offset, length)
+        : new Int32Array(obj.buffer);
+      break;
+    case "bool":
+      typed = (typeof length === "number")
+        ? new Uint8Array(obj.buffer, offset, length)
+        : new Uint8Array(obj.buffer);
       break;
     default:
       throw new Error(`Unsupported dtype: ${obj.dtype}`);
   }
 
-  return tf.tensor(typedArray, obj.shape, obj.dtype);
+  return tf.tensor(typed, obj.shape, obj.dtype);
 }
 
-/**
- * Worker message handler
- */
+
+/** Serialize possible outputs so they can be structured-cloned */
+function serializeOutput(out) {
+	if (out == null) return out;
+
+	// tensor → plain object with buffer/shape/dtype
+	if (out instanceof tf.Tensor) {
+		const data = out.dataSync(); // TypedArray
+		return {
+			__tensor__: true,
+			buffer: data.buffer, // ArrayBuffer (cloneable; could also be transferable)
+			shape: out.shape,
+			dtype: out.dtype
+		};
+	}
+
+	// array → serialize each element
+	if (Array.isArray(out)) {
+		return out.map(serializeOutput);
+	}
+
+	// plain object / number / string → pass through
+	if (
+		typeof out === 'object' ||
+		typeof out === 'number' ||
+		typeof out === 'string' ||
+		typeof out === 'boolean'
+	) {
+		return out;
+	}
+
+	// fallback: stringify
+	try {
+		return JSON.parse(JSON.stringify(out));
+	} catch {
+		return String(out);
+	}
+}
+
 self.onmessage = async (e) => {
-  const msg = e.data;
+	const msg = e.data;
+	if (msg?.type !== 'run_inference') return;
 
-  if (msg.type === "run_inference") {
-    const { model_name, model_files, model_meta, input_map, basePath } = msg;
+	const { model_name, model_files, model_meta, input_map, basePath } = msg;
 
-    try {
-      // 1️⃣ Load the model if not already loaded
-      let model = loadedModels[model_name];
-      if (!model) {
-        // Provide tf + resolveModelLibraryPath stub
-        model = await Library.load_model({tf}, basePath,model_name);
-        loadedModels[model_name] = model;
-      }
+	try {
+		// 1) load model if needed
+		// 1) load model if needed
+		let model = loadedModels[model_name];
+		if (!model) {
+			// env stub: only tf
+			model = await Library.load_model({ tf }, basePath, model_name);
+			loadedModels[model_name] = model;
+		}
 
-      const keys = Object.keys(input_map);
-      const output_map = {};
+		// 2) iterate over items
+		const keys = Object.keys(input_map || {});
+		const output_map = {};
 
-      // 2️⃣ Run inference per key
-      for (let i = 0; i < keys.length; i++) {
-        const key = keys[i];
-        const entry = input_map[key];
+		for (let i = 0; i < keys.length; i++) {
+			const key = keys[i];
+			const entry = input_map[key];
 
-        // Reconstruct tensor(s) from serialized buffers
-        const tensors = Array.isArray(entry.input_tensor)
-          ? entry.input_tensor.map(deserializeTensor)
-          : deserializeTensor(entry.input_tensor);
+			// ALWAYS array of serialized tensors per your InferenceTask.load_data
+			const serializedList = entry.input_tensor || [];
+			const tensors = serializedList.map(deserializeTensor);
 
-        let output;
-        if (model_name === "tf.coco-ssd" && model.detect) {
-          output = await model.detect(tensors);
-        } else if (model.predict) {
-          output = model.predict(tensors);
-        } else {
-          throw new Error(`Cannot run model: ${model_name}`);
-        }
+			const perItemOutputs = [];
 
-        output_map[key] = {
-          output,
-          results: entry.results,
-          derived: entry.derived
-        };
+			if (model_name === 'tf.coco-ssd' && typeof model.detect === 'function') {
+				// run detect per tensor (coco-ssd expects an image tensor)
+				for (const t of tensors) {
+					const out = await model.detect(t);
+					perItemOutputs.push(serializeOutput(out)); // out is plain objects already, but safe to serialize
+					t.dispose?.();
+				}
+			} else if (typeof model.predict === 'function') {
+				// generic model: predict per tensor (avoid batching ambiguity)
+				for (const t of tensors) {
+					const out = model.predict(t);
+					// out can be a tensor, array of tensors, or plain objects
+					perItemOutputs.push(serializeOutput(out));
+					t.dispose?.();
+				}
+			} else {
+				throw new Error(`Cannot run model "${model_name}": no detect() or predict().`);
+			}
 
-        // 3️⃣ Send progress update
-        self.postMessage({
-          type: "progress",
-          percent: Math.round(((i + 1) / keys.length) * 100)
-        });
-      }
+			// store only the outputs array (mirrors main-thread path)
+			output_map[key] = perItemOutputs;
 
-      // 4️⃣ Send final output
-      self.postMessage({ type: "done", output_map });
-    } catch (err) {
-      self.postMessage({ type: "error", error: err.message || String(err) });
-    }
-  }
+			// 3) progress update
+			self.postMessage({
+				type: 'progress',
+				percent: Math.round(((i + 1) / keys.length) * 100)
+			});
+		}
+
+		// 4) done
+		self.postMessage({ type: 'done', output_map });
+	} catch (err) {
+		self.postMessage({ type: 'error', error: err?.message || String(err) });
+	}
 };

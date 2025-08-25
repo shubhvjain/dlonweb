@@ -49,6 +49,8 @@ export class Library {
               dtype: "float32",
               normalize: true,
               addBatchDim: true,
+              targetHeight:256,
+              targetWidth: 256
             },
             model_output: "image_segmentation",
             title: {
@@ -69,7 +71,7 @@ export class Library {
   /**
    * Load static or remote model registry.
    */
-  static async load_data() {
+  static  load_data() {
     // Future: replace with fetch if external registry is needed
     return this.data;
   }
@@ -79,7 +81,7 @@ export class Library {
    * Useful for building dropdowns or UIs.
    */
   static async get_model_list() {
-    const data = await this.load_data();
+    const data =  this.load_data();
     const result = [];
 
     for (const [projectKey, project] of Object.entries(data.projects)) {
@@ -101,9 +103,9 @@ export class Library {
    * @param {string|array} args - "project.model" or [project, model]
    */
   static async get_model(...args) {
-    const data = await this.load_data();
+    const data =  this.load_data();
     let projectKey, modelKey;
-
+    console.log(args)
     if (args.length === 1) {
       [projectKey, modelKey] = args[0].split(".");
     } else if (args.length === 2) {
@@ -148,34 +150,73 @@ export class Library {
   /**
    * Get canonical input options for a model.
    * Used to normalize data preparation across different models.
+   * Returns only standard fields: { inputShape, dtype, normalize, addBatchDim }
    */
-  static get_model_options(modelName, model) {
-    if (modelName === "tf.coco-ssd") {
-      return {
-        inputShape: [1, -1, -1, 3], // batch size 1
-        dtype: "int32",             // coco-ssd expects int32
-        normalize: false,
-        addBatchDim: false,
-      };
-    }
-
-    // Generic case for TF.js LayersModel
-    if (model && model.inputs && model.inputs.length > 0) {
-      const inputTensor = model.inputs[0];
-      const inputShape = inputTensor.shape.map((dim) => (dim === null ? 1 : dim));
-      const dtype = inputTensor.dtype || "float32";
-      const addBatchDim = inputShape.length > 3;
-      const normalize = dtype === "float32";
-
-      return { inputShape, dtype, normalize, addBatchDim };
-    }
-
-    // Fallback default
+static  get_model_options(modelName, model = null) {
+  // Special-case: coco-ssd (dynamic H/W, no batch, no normalize, int32)
+  if (modelName === "tf.coco-ssd") {
     return {
-      inputShape: [1, 224, 224, 3],
-      dtype: "float32",
-      normalize: true,
-      addBatchDim: true,
+      inputShape: [1, -1, -1, 3],
+      dtype: "int32",
+      normalize: false,
+      addBatchDim: false,
     };
   }
+
+  const defaults = {
+    inputShape: [1, 224, 224, 3],
+    dtype: "float32",
+    normalize: true,
+    addBatchDim: true,
+  };
+
+  // 1) Registry (if available)
+  const data =  this.load_data();
+  const [projectKey, modelKey] = (modelName || "").split(".");
+  if (!projectKey || !modelKey) throw new Error("invalid model name (expected 'project.model')");
+  const reg = data?.projects?.[projectKey]?.models?.[modelKey];
+
+  const fromRegistry = {};
+  if (reg?.model_input_options) {
+    const mio = reg.model_input_options;
+    if (mio.inputShape) fromRegistry.inputShape = mio.inputShape;
+    if (mio.dtype) fromRegistry.dtype = mio.dtype;
+    if (typeof mio.normalize !== "undefined") fromRegistry.normalize = mio.normalize;
+    if (typeof mio.addBatchDim !== "undefined") fromRegistry.addBatchDim = mio.addBatchDim;
+  }
+
+  // 2) Inference from loaded model (optional)
+  const fromModel = {};
+  if (model && Array.isArray(model.inputs) && model.inputs.length) {
+    const t = model.inputs[0];
+    const shape = (t.shape || []).map((d, i) => (d == null || d < 0 ? (i === 0 ? 1 : -1) : d));
+    if (shape.length) fromModel.inputShape = shape;
+    if (t.dtype) fromModel.dtype = t.dtype;
+    // Heuristic: 4D input -> batch dim likely present
+    if (shape.length) fromModel.addBatchDim = shape.length > 3;
+    // Keep normalize default unless registry overrides it
+  }
+
+  // 3) Merge: defaults < fromModel < fromRegistry
+  const merged = { ...defaults, ...fromModel, ...fromRegistry };
+
+  // 4) Sanitize shape to 4D and batch dim if requested
+  let s = merged.inputShape;
+  if (Array.isArray(s)) {
+    if (s.length === 3 && merged.addBatchDim) s = [1, ...s];
+    if (s.length === 4) {
+      // Ensure batch is concrete (1), keep H/W dynamic if unknown
+      s = s.map((d, i) => (d == null || d < 0 ? (i === 0 ? 1 : -1) : d));
+    }
+    merged.inputShape = s;
+  } else {
+    merged.inputShape = defaults.inputShape;
+  }
+
+  // 5) Return only standard keys
+  const { inputShape, dtype, normalize, addBatchDim } = merged;
+  return { inputShape, dtype, normalize, addBatchDim };
+}
+
+  
 }
