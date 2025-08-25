@@ -1,12 +1,12 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 
-	import { Library,Data, InferenceTask } from 'dlonwebjs';
-	import {adaptor} from "$lib/utils/adapter.browser"
+	import { Library, Data, InferenceTask } from 'dlonwebjs';
+	import { adaptor } from '$lib/utils/adapter.browser';
 
 	import { translations, userSettings } from '$lib/utils/store.js';
 	import Input from './_Input.svelte';
-	import { InferencePipeline } from '$lib/utils/inferencePipeline.js';
+
 	import { filesStore } from '$lib/utils/filesStorage';
 	import { get } from 'svelte/store';
 
@@ -16,7 +16,12 @@
 	 * - `model_name` : to select a model name by default
 	 * - `emit_output` : this is a method that other components can use to get the output of the model
 	 */
-	let { component_valid = $bindable(false), model_name, on_emit_output } = $props();
+	let {
+		component_valid = $bindable(false),
+		model_name,
+		on_emit_output,
+		task_running = $bindable(false)
+	} = $props();
 
 	// to manage the over component
 	let error = $state('');
@@ -29,11 +34,10 @@
 		status = { type: 'success', text };
 	};
 
-	let dev_mode = $state(true)
+	let dev_mode = $state(false);
 
 	// To manage input
 	let input_valid = $state(false);
-	let input_data = $state([]);
 	let input_options = $state({});
 
 	// To manage model
@@ -44,9 +48,10 @@
 
 	// To manage model running
 	let worker = $state();
-	let progress = $state({ current: 0, total: 0, percentage: 0 });
+	let workerListener = $state();
+
+	let progress = $state({ percent: 0 });
 	let select_location = $state('browser');
-	let task_running = $state(false);
 	let task_run_status = $state('');
 	let pipeline = $state();
 
@@ -55,12 +60,7 @@
 
 	onMount(async () => {
 		await load_page();
-	});
-
-	onDestroy(() => {
-		if (pipeline) {
-			pipeline.terminate();
-		}
+		//task_running = true 
 	});
 
 	/**
@@ -85,8 +85,6 @@
 		input_valid = opt.data_valid;
 		// console.log(opt);
 		if (input_valid) {
-			input_data = $state.snapshot(filesStore);
-			//console.log(input_data);
 			input_options = opt.options;
 		}
 		check_valid();
@@ -103,7 +101,7 @@
 			//component_valid = false;
 		}
 		if (!input_valid) {
-			er.push('Input is not valid');
+			er.push('No data provided or data provided is invalid');
 		}
 		//error = er.join(', \n');
 		if (er.length > 0) {
@@ -148,18 +146,23 @@
 		return JSON.parse(JSON.stringify(jsn));
 	};
 
+	function updateProgressFromPercent(pct) {
+		const p = Math.max(0, Math.min(100, Number(pct) || 0));
+		progress = { percent: p };
+	}
+
 	/**
-	 * To run the inference pipeline
+	 * To run the inference task on the input provided
 	 */
 	const inference_pipeline = async () => {
 		try {
 			if (!selected_model || !input_valid) {
-				throw new Error('Model or input invalid')
+				throw new Error('Model or input invalid');
 			}
 			task_running = true;
-			progress = { current: 0, total: 0, percentage: 0 };
-			set_success("Initializing")
-			
+			progress = { percent: 0 };
+			set_success('Initializing');
+
 			// Create worker if not already exists
 			if (!worker) {
 				worker = new Worker(new URL('$lib/utils/inference.worker.js', import.meta.url), {
@@ -167,65 +170,80 @@
 				});
 			}
 
+			// 2) (re)attach a single listener for progress/error coming from worker
+			if (workerListener && worker) {
+				worker.removeEventListener('message', workerListener);
+			}
 
-			// Create or recreate pipeline
-			pipeline = new InferencePipeline()
+			let rejectWorkerError;
+			const workerErrorPromise = new Promise((_, reject) => (rejectWorkerError = reject));
 
-			//select_location, 'web_worker', worker);
+			workerListener = (ev) => {
+				const msg = ev?.data;
+				if (!msg || typeof msg !== 'object') return;
 
-			//set_success("Checking model")
-			//await pipeline.load_input(input_data,input_options)
-
-			
-			// Progress callback
-			const onProgress = (p) => {
-				progress = {
-					current: p.current,
-					total: p.total,
-					percentage: p.total > 0 ? (p.current / p.total) * 100 : 0
-				};
-				set_success(`Processing ${p.current}/${p.total}`);
+				if (msg.type === 'progress') {
+					// your worker posts { type: 'progress', percent }
+					updateProgressFromPercent(msg.percent);
+					set_success(`Processing ${Math.round(progress.percentage)}%`);
+				} else if (msg.type === 'error') {
+					// surface worker error (in case InferenceTask doesn't already reject)
+					rejectWorkerError(new Error(msg.error || 'Worker error'));
+				} else if (msg.type === 'done') {
+					// nothing to do here; InferenceTask.run_model will resolve with output_map
+				}
 			};
+			worker.addEventListener('message', workerListener);
 
-
-
-			//set_success('Loading Input')
-			// Run inference
-			const filesArray = Array.from(get(filesStore));
-			if (filesArray.length == 0) {
+			// 3) gather files
+			const filesArray = Array.from(get(filesStore) || []);
+			if (filesArray.length === 0) {
 				throw new Error('No input files available');
 			}
-			
-			//await pipeline.load_input(input_data,input_options)
-			//set_success("Files loaded successfully")
 
+			// 4) build data (preprocess on load — e.g., decode video → frames)
+			set_success('Loading input…');
+			const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
+			await data.load();
+			set_success('Data loaded');
 
-			/*
-    inputFiles = [],
-		modelDetails = { name: '', model: null },
-		runOptions = { location: 'browser', mode: 'web_worker', worker: null },
-		onProgress = () => {}
-    */
+			// 5) prepare inference task in web_worker mode
+			const task = new InferenceTask({
+				env: adaptor, // must include tf + basePath
+				model_name: selected_model, // e.g. "tf.coco-ssd"
+				run_mode: 'web_worker',
+				worker
+			});
 
-			output = await pipeline.run(
-				filesArray,
-				sanitizeJSON({ name: selected_model }),
-				{ location: 'browser', mode: 'main_thread' },
-				onProgress
-			);
+			await task.load_data(data);
+			set_success('Model & inputs ready');
+
+			// 6) run model; combine task callback + worker progress
+			const runPromise = task.run_model((pct) => {
+				// some models / pipelines report their own percent callback
+				updateProgressFromPercent(pct);
+			});
+
+			const result = await Promise.race([runPromise, workerErrorPromise]);
+			// If the race resolved from runPromise, grab its value; if it was the worker error,
+			// the catch below will handle it.
+			output = result || (await runPromise);
+
+			task_run_status = 'Inference completed!';
+			set_success('Done');
 
 			task_run_status = 'Inference completed!';
 			console.log('Pipeline output:', output);
 			task_running = false;
 		} catch (err) {
 			task_running = false;
-			set_error(`Pipeline failed: ${err.message}`)
+			set_error(`Pipeline failed: ${err.message}`);
 
 			console.error('Pipeline error:', err);
 			// error = `Pipeline failed: ${err.message}`;
-		} 
+		}
 		// finally {
-			
+
 		// 	// Reset progress after a delay to show completion
 		// 	setTimeout(() => {
 		// 		progress = { current: 0, total: 0, percentage: 0 };
@@ -247,86 +265,94 @@
 		}
 	};
 
-
-	let workerRef = $state()
+	let workerRef = $state();
 	const simple_inference_run = async () => {
-  // 1) create worker
-  const worker = new Worker(
-    new URL('$lib/utils/inference.worker.js', import.meta.url),
-    { type: 'module' }
-  );
-  workerRef = worker;
+		// 1) create worker
+		const worker = new Worker(new URL('$lib/utils/inference.worker.js', import.meta.url), {
+			type: 'module'
+		});
+		workerRef = worker;
 
-  try {
-    // 2) gather files
-    const filesArray = Array.from(get(filesStore) || []);
-    if (filesArray.length === 0) {
-      throw new Error('No input files available');
-    }
-
-    // 3) build Data (preprocess on load)
-    const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
-    await data.load(); // processFile runs here (video → frames)
-    console.log('Data loaded:', data);
-
-    // 4) prepare task (web worker mode)
-		console.log(selected_model)
-    const task = new InferenceTask({
-      env: adaptor,                 // must include tf + basePath
-      model_name: selected_model,   // e.g. "tf.coco-ssd" or "bagls.segment"
-      run_mode: 'web_worker',
-      worker
-    });
-
-		console.log("InferenceTask loaded")
-
-    // 5) tensors are created on the main thread (per our design)
-    await task.load_data(data);
-		console.log("data inside InferenceTask loaded")
-
-    // 6) run inference (progress callback optional)
-    const outputMap = await task.run_model((percent) => {
-      // update progress UI; throttle if noisy
-      console.log('progress:', percent, '%');
-    });
-
-    console.log('Inference complete:', outputMap);
-
-    // TODO: integrate outputMap back into your Data or UI
-    // e.g., data.add_results(key, selected_model, outputPerKey)
-
-  } catch (err) {
-    console.error('Inference error:', err);
-  } finally {
-    // 7) always cleanup worker
-    try { worker.terminate(); } catch {}
-    if (workerRef === worker) workerRef = null;
-  }
-};
-
-
-	const test_tensor_generation = async ()=>{
 		try {
-			console.log("testing data")
+			// 2) gather files
+			const filesArray = Array.from(get(filesStore) || []);
+			if (filesArray.length === 0) {
+				throw new Error('No input files available');
+			}
+
+			// 3) build Data (preprocess on load)
+			const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
+			await data.load(); // processFile runs here (video → frames)
+			console.log('Data loaded:', data);
+
+			// 4) prepare task (web worker mode)
+			console.log(selected_model);
+			const task = new InferenceTask({
+				env: adaptor, // must include tf + basePath
+				model_name: selected_model, // e.g. "tf.coco-ssd" or "bagls.segment"
+				run_mode: 'web_worker',
+				worker
+			});
+
+			console.log('InferenceTask loaded');
+
+			// 5) tensors are created on the main thread (per our design)
+			await task.load_data(data);
+			console.log('data inside InferenceTask loaded');
+
+			// 6) run inference (progress callback optional)
+			const outputMap = await task.run_model((percent) => {
+				// update progress UI; throttle if noisy
+				console.log('progress:', percent, '%');
+			});
+
+			console.log('Inference complete:', outputMap);
+
+			// TODO: integrate outputMap back into your Data or UI
+			// e.g., data.add_results(key, selected_model, outputPerKey)
+		} catch (err) {
+			set_error(`Pipeline failed: ${err.message || err}`);
+			task_run_status = 'Failed';
+		} finally {
+			task_running = false;
+			// keep worker alive to benefit from model cache; remove listener to prevent duplicates
+			try {
+				if (workerListener && worker) worker.removeEventListener('message', workerListener);
+			} catch (e) {}
+			workerListener = null;
+		}
+	};
+
+	const test_tensor_generation = async () => {
+		try {
+			console.log('testing data');
 			const filesArray = Array.from(get(filesStore));
 			if (filesArray.length == 0) {
 				throw new Error('No input files available');
 			}
-			let testdata = new Data(adaptor,filesArray,input_options)
-			await testdata.load()
-			console.log("data loaded")
-			console.log(testdata)
+			let testdata = new Data(adaptor, filesArray, input_options);
+			await testdata.load();
+			console.log('data loaded');
+			console.log(testdata);
 
-			let model_details = await Library.get_model_options(selected_model)			
-			console.log(model_details)
+			let model_details = await Library.get_model_options(selected_model);
+			console.log(model_details);
 
-			await testdata.create_tensors(selected_model,model_details)
-			console.log(testdata)
-
+			await testdata.create_tensors(selected_model, model_details);
+			console.log(testdata);
 		} catch (error) {
-			console.log(error)
+			console.log(error);
 		}
-	}
+	};
+
+	onDestroy(() => {
+		try {
+			if (workerListener && worker) worker.removeEventListener('message', workerListener);
+			worker?.terminate();
+		} catch (e) {}
+		worker = null;
+		workerListener = null;
+	});
 </script>
 
 <div class="p-1 mb-2 pt-2">
@@ -390,21 +416,11 @@
 			<div class="text-{status.type} mb-2">{status.text}</div>
 		{/if}
 
-		{#if task_running && progress.total > 0}
-			<div class="mb-2">
-				<div class="progress">
-					<div
-						class="progress-bar progress-bar-striped progress-bar-animated"
-						role="progressbar"
-						style="width: {progress.percentage}%"
-						aria-valuenow={progress.percentage}
-						aria-valuemin="0"
-						aria-valuemax="100"
-					>
-						{Math.round(progress.percentage)}%
-					</div>
-				</div>
-				<p class="text-muted">Processing {progress.current}/{progress.total}</p>
+		{#if task_running && progress.percent > 0}
+			<div aria-live="polite" style="margin-top: .5rem;">
+				<progress max="100" value={progress.percent}></progress>
+				<span style="margin-left:.5rem;">{progress.percent}%</span>
+				{#if task_run_status}<div style="margin-top:.25rem;">{task_run_status}</div>{/if}
 			</div>
 		{/if}
 
@@ -445,13 +461,9 @@
 	<div>
 		<button class="btn btn-link" onclick={test_tensor_generation}> Test tensor generation </button>
 
-		
-
 		<button class="btn btn-link" onclick={simple_inference_run}> run simple </button>
-
 	</div>
 {/if}
-
 
 <style>
 	.loader {

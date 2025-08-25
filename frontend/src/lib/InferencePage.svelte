@@ -7,6 +7,17 @@
 	import Output from './_Output.svelte';
 	import { translations } from '$lib/utils/store.js';
 
+	import { beforeNavigate } from '$app/navigation';
+
+	 let page_processing = $state(false);
+
+		beforeNavigate((nav) => {
+			if (page_processing) {
+				// Cancel the navigation
+				nav.cancel();
+				alert("Processing is still running. Please wait before leaving or cancel the current task.");
+			}
+		});
 
 	let modelList = $state([]);
 	let input = $state([]);
@@ -38,7 +49,8 @@
 
 			<div class="card" >
 				<div class="card-body">
-					<InferenceTask bind:model_valid={status.model}  model_name={modelName} on_emit_output={appendOutputs} />
+					<InferenceTask bind:model_valid={status.model}
+					bind:task_running={page_processing}  model_name={modelName} on_emit_output={appendOutputs} />
 				</div>
 			</div>
 

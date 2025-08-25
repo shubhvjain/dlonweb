@@ -124,7 +124,7 @@
 		  <!-- Language dropdown using Bootstrap -->
 			<div class="dropdown me-1">
 				<button
-					class="btn btn-sm btn-secondary dropdown-toggle"
+					class="btn btn-sm btn-dark dropdown-toggle"
 					type="button"
 					id="languageDropdown"
 					data-bs-toggle="dropdown"
@@ -320,7 +320,7 @@
 										d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
 									/>
 								</svg>
-								{mdl.label[userSettings.language]}
+								{mdl.label[userSettingsUI.language]}
 							</a>
 						</li>
 					{/each}

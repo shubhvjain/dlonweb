@@ -11,7 +11,6 @@
 	import Preview from './_Preview.svelte';
 	import { onMount } from 'svelte';
 	import { Data } from 'dlonwebjs';
-	// import { browserOptions } from '$lib/utils/data.browser';
 	import { input } from '@tensorflow/tfjs';
 
 	import { translations, userSettings } from '$lib/utils/store.js';
@@ -25,8 +24,6 @@
 	let hasVideo = $state(false);
 	let error = $state('');
 	let progress = $state(0);
-
-
 	let data = $state([])
 	let data_valid = $state(false) 
 	let data_error = $state("")
