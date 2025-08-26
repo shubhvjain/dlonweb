@@ -10,7 +10,7 @@
 	import Documentation from '$lib/Documentation.svelte';
 	import { getAllSettings, saveAllSettings, getSystemSettings } from '$lib/utils/settings.js';
 	import { translations, userSettings } from '$lib/utils/store.js';
-	import 'typeface-roboto';
+	// import 'typeface-roboto';
 
 	let showInfoRow = $state(false);
 	let models = $state([]);
