@@ -276,5 +276,162 @@ async _decodeImage(fileOrBlob, options = {}) {
 		ctx.putImageData(imgData, 0, 0);
 
 		return new Promise((res) => canvas.toBlob(res, type));
-	}
+	},
+
+	/**
+ * Generate task-specific, user-facing outputs from inference results.
+ * @param {"object_detection"} task_type
+ * @param {File|Blob|Array<File|Blob>} rawinput  - original image(s) or frame blobs
+ * @param {Array|Array[]} predicted_results      - detections per image/frame
+ * @param {"bounding_boxes"|"crop_objects"|"objects"} output_type
+ * @returns {Promise<any>}  // see returns by output_type below
+ */
+async generate_inference_output(task_type, rawinput, predicted_results,output_type ) {
+  if (task_type !== "object_detection") {
+    throw new Error(`Unsupported task_type: ${task_type}`);
+  }
+
+  // Normalize inputs to arrays
+  const inputs = Array.isArray(rawinput) ? rawinput : [rawinput];
+  const results = Array.isArray(predicted_results) ? predicted_results : [predicted_results];
+
+  if (inputs.length !== results.length) {
+    throw new Error(`Input/Result length mismatch: got ${inputs.length} inputs vs ${results.length} results`);
+  }
+
+  switch (output_type) {
+    case "bounding_boxes": {
+      // RETURNS: File[] (PNG overlays), one per input image
+      const outImages = [];
+      for (let i = 0; i < inputs.length; i++) {
+        const file = inputs[i];
+        const dets = Array.isArray(results[i]) ? results[i] : [];
+        const overlaid = await this._drawDetectionsOnImage(file, dets);
+        outImages.push(overlaid);
+      }
+      return outImages;
+    }
+
+    case "crop_objects": {
+      // RETURNS: File[][] (per image, array of cropped object images)
+      const outCrops = [];
+      for (let i = 0; i < inputs.length; i++) {
+        const file = inputs[i];
+        const dets = Array.isArray(results[i]) ? results[i] : [];
+        const crops = await this._cropDetectionsFromImage(file, dets);
+        outCrops.push(crops);
+      }
+      return outCrops;
+    }
+
+    case "objects": {
+      // RETURNS: {class, score, bbox:[x,y,w,h]}[][]  (per image)
+      const outObjects = [];
+      for (let i = 0; i < inputs.length; i++) {
+        const dets = Array.isArray(results[i]) ? results[i] : [];
+        outObjects.push(
+          dets.map(d => ({
+            class: d.class ?? d.label ?? 'object',
+            score: d.score ?? d.confidence ?? null,
+            bbox: Array.isArray(d.bbox) ? d.bbox.slice(0, 4) : null
+          }))
+        );
+      }
+      return outObjects;
+    }
+
+    default:
+      throw new Error(`Unsupported output_type: ${output_type}`);
+  }
+},
+
+/** Helpers for object-detection post-processing (browser) **/
+
+/**
+ * Draw bounding boxes + labels over an image/file.
+ * @param {File|Blob} file
+ * @param {Array} detections - [{bbox:[x,y,w,h], class, score}]
+ * @returns {Promise<File>} PNG file with overlays
+ */
+async _drawDetectionsOnImage(file, detections) {
+  const img = await this._loadImageElement(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+
+  // base image
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  // style
+  ctx.lineWidth = 2;
+  ctx.font = '16px sans-serif';
+
+  detections.forEach(det => {
+    const [x, y, w, h] = (det.bbox || [0,0,0,0]).map(v => Math.max(0, v));
+    // clamp and skip tiny boxes
+    const cx = Math.min(x, canvas.width - 1);
+    const cy = Math.min(y, canvas.height - 1);
+    const cw = Math.max(1, Math.min(w, canvas.width - cx));
+    const ch = Math.max(1, Math.min(h, canvas.height - cy));
+
+    // box
+    ctx.strokeStyle = 'red';
+    ctx.strokeRect(cx, cy, cw, ch);
+
+    // label
+    const label = det.class ?? det.label ?? 'object';
+    const score = det.score != null ? ` ${(det.score * 100).toFixed(1)}%` : '';
+    const text = `${label}${score}`;
+    const pad = 4;
+    const tw = ctx.measureText(text).width + pad * 2;
+    const th = 18 + pad * 2;
+    ctx.fillStyle = 'rgba(255,0,0,0.8)';
+    ctx.fillRect(cx, Math.max(0, cy - th), tw, th);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(text, cx + pad, Math.max(12, cy - th + 14));
+  });
+
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+	let file_base = file.name.split(".")
+  return new File([blob], (file_base[0] || 'image') + '_boxes.png', { type: 'image/png' });
+},
+
+/**
+ * Crop each detection from an image/file.
+ * @param {File|Blob} file
+ * @param {Array} detections - [{bbox:[x,y,w,h], class, score}]
+ * @returns {Promise<File[]>} cropped object images (PNG)
+ */
+async _cropDetectionsFromImage(file, detections) {
+  const img = await this._loadImageElement(file);
+  const crops = [];
+
+  for (let i = 0; i < detections.length; i++) {
+    const det = detections[i];
+    const [x, y, w, h] = (det.bbox || [0,0,0,0]).map(v => Math.max(0, v));
+
+    // clamp
+    const cx = Math.min(x, img.width - 1);
+    const cy = Math.min(y, img.height - 1);
+    const cw = Math.max(1, Math.min(w, img.width - cx));
+    const ch = Math.max(1, Math.min(h, img.height - cy));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
+
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const label = det.class ?? det.label ?? 'object';
+    const score = det.score != null ? `_${Math.round(det.score * 100)}` : '';
+    const base = (file.name || 'image').replace(/\.[^.]+$/, '');
+    const fname = `${base}_${label}_crop_${i}.png`;
+    crops.push(new File([blob], fname, { type: 'image/png' }));
+  }
+
+  return crops;
+},
+
 };

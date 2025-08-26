@@ -24,6 +24,7 @@ export class InferenceTask {
     model_meta = null,
     worker = null,
     run_mode = "main_thread",
+    name = null,
   }) {
     if (!env || !env.tf) throw new Error("env with tf required");
     if (!model_name) throw new Error("model_name required");
@@ -39,28 +40,44 @@ export class InferenceTask {
     this.input_data_obj = null; // instance of Data
     this.input_data_map = {}; // { key: { tensor } }
     this.output_data_map = {}; // { key: result }
-
+    this.run_times = {
+      load_data: 0,
+      run: 0,
+      generate_output: 0,
+    };
     this.worker = worker;
     this.run_mode = run_mode;
+    this.name = name;
+  }
 
+  now_time() {
+    return Date.now();
   }
 
   /** Load model into memory (main thread only) */
   async load_model() {
     if (this.model) return;
-
+    stime = this.now_time();
     if (this.model_name === "custom") {
       if (!this.model_files)
         throw new Error("model_files required for custom model");
       this.model = await this.tf.loadLayersModel(this.model_files);
     } else {
-      this.model = await Library.load_model(this.env, this.env.basePath,this.model_name);
-      if (!this.model_meta) {
-        console.log(this.model_name)
-        this.model_meta = await Library.get_model(this.model_name);
-      }
+      this.model = await Library.load_model(
+        this.env,
+        this.env.basePath,
+        this.model_name
+      );
     }
-    console.log("model loaded")
+    etime = this.now_time();
+    this.run_times.run += etime - stime;
+    console.log("model loaded");
+  }
+
+  async load_model_meta() {
+    if (!this.model_meta) {
+      this.model_meta = await Library.get_model(this.model_name);
+    }
   }
 
   /** Load a Data object, create tensors, and (if worker mode) serialize them */
@@ -68,12 +85,15 @@ export class InferenceTask {
     if (!data_obj) throw new Error("Data object required");
     this.input_data_obj = data_obj;
 
+    await this.load_model_meta();
+
     // 1) create tensors on the main thread
+    let stime = this.now_time();
     const model_options = Library.get_model_options(
       this.model_name,
       this.model
     );
-    console.log(model_options)
+    console.log(model_options);
     await this.input_data_obj.create_tensors(this.model_name, model_options);
 
     // 2) build input_data_map
@@ -95,7 +115,7 @@ export class InferenceTask {
             throw new Error("Expected tf.Tensor in worker mode serialization");
           }
           const ta = t.dataSync(); // TypedArray view (may have byteOffset!)
-          // OPTION A: zero-copy with offset/length metadata
+          //  zero-copy with offset/length metadata
           this._transferables.push(ta.buffer);
           return {
             buffer: ta.buffer,
@@ -104,17 +124,6 @@ export class InferenceTask {
             dtype: t.dtype,
             shape: t.shape,
           };
-
-          // OPTION B (simpler, copies once; comment out A if you prefer):
-          // const tight = ta.slice(); // new TypedArray with offset 0
-          // this._transferables.push(tight.buffer);
-          // return {
-          //   buffer: tight.buffer,
-          //   byteOffset: 0,
-          //   length: tight.length,
-          //   dtype: t.dtype,
-          //   shape: t.shape
-          // };
         });
 
         this.input_data_map[key] = {
@@ -139,12 +148,37 @@ export class InferenceTask {
         };
       }
     }
+    let etime = this.now_time();
+    this.run_times.load_data += etime - stime;
+  }
+
+  task_name_check() {
+    // to add a name to a task if not provided
+    if (!this.name) {
+      let f_len = this.input_data_obj?.filelist.length ?? 0;
+      let model_type = "";
+      switch (this.model_meta.type) {
+        case "segment_image":
+          model_type = "Segmentation";
+          break;
+        case "object_detection":
+          model_type = "Object detection";
+          break;
+        default:
+          model_type = "Inference";
+      }
+      this.name = `${model_type} of ${f_len} file${
+        f_len == "1" ? "" : "s"
+      } using ${this.model_name}`;
+    }
   }
 
   /** Run inference */
   async run_model(progress_callback = null) {
     if (!this.input_data_obj)
       throw new Error("Data not loaded. Call load_data() first.");
+
+    this.task_name_check();
 
     if (this.run_mode === "main_thread") {
       if (!this.model) await this.load_model();
@@ -162,6 +196,7 @@ export class InferenceTask {
   /** Execute inference on main thread */
   async _run_model_main_thread(progress_callback) {
     this.output_data_map = {};
+    let stime = this.now_time();
     const keys = this.input_data_obj.filelist;
     const total = keys.length;
 
@@ -177,18 +212,18 @@ export class InferenceTask {
       }
       const tensors = entry.tensors;
 
-      console.log(tensors)
+      //console.log(tensors)
       // run per-tensor
       const perItemOutputs = [];
       if (this.model_name === "tf.coco-ssd" && this.model?.detect) {
         for (const t of tensors) {
-          console.log(t)
+          //console.log(t)
           const out = await this.model.detect(t);
           perItemOutputs.push(out);
         }
       } else if (this.model?.predict) {
         for (const t of tensors) {
-          console.log(t)
+          //console.log(t)
           const out = this.model.predict(t);
           perItemOutputs.push(out);
         }
@@ -204,6 +239,8 @@ export class InferenceTask {
         progress_callback(Math.round(((i + 1) / total) * 100));
       }
     }
+    let etime = this.now_time();
+    this.run_times.run += etime - stime;
   }
 
   /** Execute inference in a web worker */
@@ -218,14 +255,21 @@ export class InferenceTask {
 
     return new Promise((resolve, reject) => {
       const handle_message = (e) => {
-        const { type, percent, output_map, error } = e.data || {};
+        const { type, percent, output_map, error, run_time } = e.data || {};
 
         if (type === "progress" && progress_callback) {
           progress_callback(percent);
         } else if (type === "done") {
           this.output_data_map = output_map || {};
+          for (const key of Object.keys(this.output_data_map)){
+            this.input_data_obj.add_results(key, this.model_name,this.output_data_map[key] );
+          }
+          
           this.worker.removeEventListener("message", handle_message);
-          resolve(this.output_data_map);
+          if (run_time) {
+            this.run_times.run += run_time;
+          }
+          resolve();
         } else if (type === "error") {
           this.worker.removeEventListener("message", handle_message);
           reject(error);
@@ -249,69 +293,149 @@ export class InferenceTask {
     });
   }
 
-  /** Execute inference in a web worker */
-  async _run_model_web_worker1(progress_callback) {
-    if (!this.worker) throw new Error("Worker not initialized");
-    if (!this.input_data_obj) throw new Error("No data loaded");
+  // InferenceTask.js (add inside the class)
 
-    // Build serialized input map with transferable buffers
-    this.input_data_map = {};
-    const transferables = [];
+  /**
+   * Generate preview/download artifacts after inference.
+   * Image-only, task_type: "object_detection".
+   *
+   * Returns:
+   * {
+   *   items: [
+   *     {
+   *       key,
+   *       raw_file: File,
+   *       bbox_image: File|null,
+   *       crops: File[],              // cropped objects
+   *       objects: Array<{class,score,bbox}> // plain objects list
+   *     }, ...
+   *   ],
+   *   downloads: {
+   *     raw_files: Array<{file: File, name: string}>,
+   *     bbox_images: Array<{file: File, name: string}>,
+   *     crops: Array<{file: File, name: string}>
+   *   },
+   *   summary: { total_files, total_bbox_images, total_crops, total_objects }
+   * }
+   */
+  async generate_outputs() {
+    if (!this.input_data_obj)
+      throw new Error("No Data loaded. Call load_data() first.");
+    let task_type = this.model_meta.type;
 
-    for (const key of this.input_data_obj.filelist) {
-      const model_entry =
-        this.input_data_obj.get_item(key).models[this.model_name];
-      const tensors = Array.isArray(model_entry.tensor)
-        ? model_entry.tensor
-        : [model_entry.tensor];
+    if (task_type == "object_detection") {
+      const items = [];
+      const flat_raw = [];
+      const flat_bbox = [];
+      const flat_crops = [];
+      let item_name_list = []
+      let totalObjects = 0;
 
-      const serialized_tensors = tensors.map((t) => {
-        if (!(t instanceof this.env.tf.Tensor)) {
-          throw new Error("Expected tf.Tensor");
+      for (const key of this.input_data_obj.filelist) {
+        const entry = this.input_data_obj.get_item(key);
+        
+        //console.log(entry)
+        // image-only guard
+        if (
+          !entry ||
+          !(entry.raw_file instanceof File) ||
+          !String(entry.type).startsWith("image")
+        ) {
+          // skip non-image entries for this simple path
+          continue;
         }
-        const buffer = t.dataSync().buffer; // raw ArrayBuffer
-        transferables.push(buffer);
-        return { buffer, shape: t.shape, dtype: t.dtype };
-      });
 
-      this.input_data_map[key] = {
-        input_tensor: Array.isArray(model_entry.tensor)
-          ? serialized_tensors
-          : serialized_tensors[0],
-        results: model_entry.results || {},
-        derived: model_entry.derived || {},
-      };
-    }
+        item_name_list.push(key)
+        const basename = this._filename_base(entry.raw_file.name);
+        const rawFile = entry.raw_file;
 
-    return new Promise((resolve, reject) => {
-      const handle_message = (e) => {
-        const { type, percent, output_map, error } = e.data;
+        // detections were saved earlier by run_model()
+        const detectionsPerInput =
+          this.input_data_obj.get_results(key, this.model_name) || [];
+        // We only expect one input for image (your Data.load() makes input = [rawFile])
+        const inputs =  entry.input 
 
-        if (type === "progress" && progress_callback)
-          progress_callback(percent);
-        else if (type === "done") {
-          this.output_data_map = e.data.output_map;
-          this.worker.removeEventListener("message", handle_message);
-          resolve(this.output_data_map);
-        } else if (type === "error") {
-          this.worker.removeEventListener("message", handle_message);
-          reject(error);
-        }
-      };
+        // 1) objects list (plain)
+        const objectsList = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "objects"
+        );
+        //console.log(objectsList)
+        const objectsForImage = Array.isArray(objectsList)
+          ? objectsList[0] || []
+          : [];
+        totalObjects += objectsForImage.length;
 
-      this.worker.addEventListener("message", handle_message);
+        // 2) bounding-box overlay (single image)
+        const bboxImages = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "bounding_boxes"
+        );
+        const bboxImage = Array.isArray(bboxImages)
+          ? bboxImages[0] || null
+          : null;
+        //console.log(bboxImage)
+        flat_bbox.push(bboxImage);
+       
 
-      this.worker.postMessage(
-        {
-          type: "run_inference",
-          model_name: this.model_name,
-          model_files: this.model_files,
-          model_meta: this.model_meta,
-          input_map: this.input_data_map,
-          basePath: this.env.basePath,
+
+        // 3) object crops (array of files)
+        const cropLists = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "crop_objects"
+        );
+        const cropsForImage = Array.isArray(cropLists)
+          ? cropLists[0] || []
+          : [];
+        cropsForImage.map((file) => {flat_crops.push(file);});
+
+        // raw file listing for "download all raw"
+        flat_raw.push(rawFile);
+
+        items.push({
+          key,
+          raw_file: rawFile,
+          bbox_image: bboxImages,
+          crops: cropsForImage,
+          objects: objectsForImage,
+        });
+      }
+
+      return {
+        item_name_list,
+        items,
+        downloads: {
+          raw_files: flat_raw,
+          bbox_images: flat_bbox,
+          crops: flat_crops,
         },
-        transferables
-      );
-    });
+        summary: {
+          total_files: items.length,
+          total_bbox_images: flat_bbox.length,
+          total_crops: flat_crops.length,
+          total_objects: totalObjects,
+        },
+      };
+    } else {
+      throw new Error(`generate_outputs: unsupported task_type "${task_type}"`);
+    }
+  }
+
+  _filename_base(name = "") {
+    const dot = name.lastIndexOf(".");
+    return dot > 0 ? name.slice(0, dot) : name || "image";
+  }
+
+  _safe_label(label = "object") {
+    return String(label)
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]+/g, "");
   }
 }

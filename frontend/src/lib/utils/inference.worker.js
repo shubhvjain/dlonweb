@@ -83,7 +83,7 @@ self.onmessage = async (e) => {
 	const { model_name, model_files, model_meta, input_map, basePath } = msg;
 
 	try {
-		// 1) load model if needed
+		let start_time = Date.now()
 		// 1) load model if needed
 		let model = loadedModels[model_name];
 		if (!model) {
@@ -134,9 +134,10 @@ self.onmessage = async (e) => {
 				percent: Math.round(((i + 1) / keys.length) * 100)
 			});
 		}
-
+		let end_time =  Date.now()
+		let run_time = end_time- start_time
 		// 4) done
-		self.postMessage({ type: 'done', output_map });
+		self.postMessage({ type: 'done', output_map,run_time });
 	} catch (err) {
 		self.postMessage({ type: 'error', error: err?.message || String(err) });
 	}

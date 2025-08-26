@@ -1,1 +1,6 @@
 @import url("bootstrap/dist/css/bootstrap.min.css");
+:root {
+  --bs-border-radius: 0;
+  --bs-border-radius-sm: 0;
+  --bs-border-radius-lg: 0;
+}

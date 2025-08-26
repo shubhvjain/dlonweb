@@ -17,9 +17,9 @@
 	 * - `emit_output` : this is a method that other components can use to get the output of the model
 	 */
 	let {
-		component_valid = $bindable(false),
+		component_valid = $bindable(false), 
 		model_name,
-		on_emit_output,
+		emit_output = ()=>{},
 		task_running = $bindable(false)
 	} = $props();
 
@@ -52,7 +52,6 @@
 
 	let progress = $state({ percent: 0 });
 	let select_location = $state('browser');
-	let task_run_status = $state('');
 	let pipeline = $state();
 
 	// output of the model
@@ -228,13 +227,11 @@
 			// If the race resolved from runPromise, grab its value; if it was the worker error,
 			// the catch below will handle it.
 			output = result || (await runPromise);
-
-			task_run_status = 'Inference completed!';
-			set_success('Done');
-
-			task_run_status = 'Inference completed!';
+			set_success('Inference complete');
 			console.log('Pipeline output:', output);
+			//console.log(task)
 			task_running = false;
+			emit_output(task)
 		} catch (err) {
 			task_running = false;
 			set_error(`Pipeline failed: ${err.message}`);
@@ -255,71 +252,13 @@
 	const cancel_pipeline = () => {
 		if (pipeline && task_running) {
 			pipeline.cancel();
-			task_run_status = 'Cancelling...';
+			set_error("Cancelling")
 			task_running = false;
-			progress = { current: 0, total: 0, percentage: 0 };
+			progress = { percent:0};
 
 			setTimeout(() => {
-				task_run_status = 'Pipeline cancelled';
+				set_success("Inference pipeline stopped")
 			}, 500);
-		}
-	};
-
-	let workerRef = $state();
-	const simple_inference_run = async () => {
-		// 1) create worker
-		const worker = new Worker(new URL('$lib/utils/inference.worker.js', import.meta.url), {
-			type: 'module'
-		});
-		workerRef = worker;
-
-		try {
-			// 2) gather files
-			const filesArray = Array.from(get(filesStore) || []);
-			if (filesArray.length === 0) {
-				throw new Error('No input files available');
-			}
-
-			// 3) build Data (preprocess on load)
-			const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
-			await data.load(); // processFile runs here (video → frames)
-			console.log('Data loaded:', data);
-
-			// 4) prepare task (web worker mode)
-			console.log(selected_model);
-			const task = new InferenceTask({
-				env: adaptor, // must include tf + basePath
-				model_name: selected_model, // e.g. "tf.coco-ssd" or "bagls.segment"
-				run_mode: 'web_worker',
-				worker
-			});
-
-			console.log('InferenceTask loaded');
-
-			// 5) tensors are created on the main thread (per our design)
-			await task.load_data(data);
-			console.log('data inside InferenceTask loaded');
-
-			// 6) run inference (progress callback optional)
-			const outputMap = await task.run_model((percent) => {
-				// update progress UI; throttle if noisy
-				console.log('progress:', percent, '%');
-			});
-
-			console.log('Inference complete:', outputMap);
-
-			// TODO: integrate outputMap back into your Data or UI
-			// e.g., data.add_results(key, selected_model, outputPerKey)
-		} catch (err) {
-			set_error(`Pipeline failed: ${err.message || err}`);
-			task_run_status = 'Failed';
-		} finally {
-			task_running = false;
-			// keep worker alive to benefit from model cache; remove listener to prevent duplicates
-			try {
-				if (workerListener && worker) worker.removeEventListener('message', workerListener);
-			} catch (e) {}
-			workerListener = null;
 		}
 	};
 
@@ -355,12 +294,22 @@
 	});
 </script>
 
+
+
+<div class="card">
+	<div class="card-header">
+		{$translations.inference}
+	</div>
+	<div class="card-body">
+	
+
+
 <div class="p-1 mb-2 pt-2">
 	<!-- {#if workerRunning}<p>Progress: {progress.percentage.toFixed(1)}%</p>{/if} -->
-	<h4 class="mb-2">1. {$translations.choose_model}</h4>
+	<h5 class="card-title">1. {$translations.choose_model}</h5>
 
 	<select
-		class="form-select form-select-lg mb-2"
+		class="form-select form-select-lg "
 		aria-label="select model"
 		onchange={() => select_model(selected_model)}
 		bind:value={selected_model}
@@ -373,7 +322,7 @@
 	</select>
 
 	{#if custom_model_used}
-		<div class="alert alert-info p-2 m-2">
+		<div class="alert alert-info ">
 			<strong>Custom Model:</strong> Upload your model files (.json + .bin)
 		</div>
 	{/if}
@@ -386,30 +335,34 @@
 </div>
 
 <div class="p-1 mb-2 border-top pt-4">
-	<h4>2. {$translations.upload_data}</h4>
+	<h5 class="card-title">2. {$translations.upload_data}</h5>
 	<Input data_emit={on_input_valid} />
 </div>
 
-<div class="p-1 mb-2 mt-2 border-top pt-4">
-	<h4>3. {$translations.inference_options}</h4>
 
-	<div class="mb-3 mt-3 row">
-		<label for="execution-location" class="col-sm-3 col-form-label">Run task on</label>
-		<div class="col-sm-9">
-			<select
-				class="form-select mb-3"
-				aria-label="select execution location"
-				bind:value={select_location}
-				id="execution-location"
-			>
-				<option value="browser" selected>Browser</option>
-				<option value="server">Server</option>
-			</select>
-		</div>
-	</div>
-</div>
+<details class="p-1 mb-2 mt-2 border-top pt-4">
+  <summary>
+    <h5 class="card-title d-inline">3. {$translations.inference_options}</h5>
+  </summary>
+
+  <div class="mb-3 mt-3 row">
+    <label for="execution-location" class="col-sm-3 col-form-label">Run task on</label>
+    <div class="col-sm-9">
+      <select
+        class="form-select mb-3"
+        aria-label="select execution location"
+        bind:value={select_location}
+        id="execution-location"
+      >
+        <option value="browser" selected>Browser</option>
+        <option value="server">Server</option>
+      </select>
+    </div>
+  </div>
+</details>
+
 <!-- <hr> -->
-<div class="d-flex align-items-center p-1 border-top pt-4">
+<div class="d-flex align-items-center p-1 border-top pt-2">
 	<!-- Left section: Error / Progress / Status -->
 	<div class="flex-grow-1 me-3">
 		{#if status.text}
@@ -420,13 +373,11 @@
 			<div aria-live="polite" style="margin-top: .5rem;">
 				<progress max="100" value={progress.percent}></progress>
 				<span style="margin-left:.5rem;">{progress.percent}%</span>
-				{#if task_run_status}<div style="margin-top:.25rem;">{task_run_status}</div>{/if}
+			
 			</div>
 		{/if}
 
-		{#if task_run_status}
-			<div class="text-primary">{task_run_status}</div>
-		{/if}
+		
 	</div>
 
 	<!-- Right section: Buttons -->
@@ -461,9 +412,13 @@
 	<div>
 		<button class="btn btn-link" onclick={test_tensor_generation}> Test tensor generation </button>
 
-		<button class="btn btn-link" onclick={simple_inference_run}> run simple </button>
 	</div>
 {/if}
+
+	</div>
+</div>
+
+
 
 <style>
 	.loader {
