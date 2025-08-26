@@ -35,6 +35,7 @@
 	};
 
 	let dev_mode = $state(false);
+	let options_enabled = $state(false)
 
 	// To manage input
 	let input_valid = $state(false);
@@ -313,6 +314,7 @@
 		aria-label="select model"
 		onchange={() => select_model(selected_model)}
 		bind:value={selected_model}
+		disabled={model_name}
 	>
 		<option value="" selected>Select</option>
 		{#each modelList as m}
@@ -340,6 +342,7 @@
 </div>
 
 
+{#if options_enabled}
 <details class="p-1 mb-2 mt-2 border-top pt-4">
   <summary>
     <h5 class="card-title d-inline">3. {$translations.inference_options}</h5>
@@ -359,7 +362,9 @@
       </select>
     </div>
   </div>
-</details>
+</details>	
+{/if}
+
 
 <!-- <hr> -->
 <div class="d-flex align-items-center p-1 border-top pt-2">

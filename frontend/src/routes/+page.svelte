@@ -1,5 +1,5 @@
 <script>
-  import WelcomePage from "$lib/WelcomePage.svelte";
+  import WelcomePage from "$lib/AboutPage.svelte";
 </script>
 
 <WelcomePage/>
