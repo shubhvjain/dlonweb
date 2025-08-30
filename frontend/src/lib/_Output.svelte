@@ -7,6 +7,8 @@
 	import { translations, userSettings } from '$lib/utils/store.js';
 	import JSZip from 'jszip';
 
+	import PreviewRenderer from './utils/PreviewRenderer.svelte';
+
 	let preview_data = $state({})
 	let show_loader = $state(false);
 	let key_selected = $state("");
@@ -28,6 +30,7 @@
 
 	
 	const select_item= (key)=>{
+		console.log(key)
 		loaded_selected = false
 		preview_item = preview_data.items.find(it=>{return it.key==key})
 		key_selected = key
@@ -202,13 +205,13 @@
 				
 				<button
 					type="button"
-					class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {key_selected === k ? 'active' : ''}"
-					title={k}
-					onclick={() => select_item(k)}
+					class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {key_selected === k.name ? 'active' : ''}"
+					title={k.name}
+					onclick={() => select_item(k.name)}
 				>
 					<div class="d-flex align-items-center gap-2 text-truncate">
 						
-						<span class="text-truncate" style="max-width: 200px;">{k}</span>
+						<span class="text-truncate" style="max-width: 200px;"> {iconForType(k.type)} {k.name}</span>
 					</div>
 					
 				</button>
@@ -223,72 +226,119 @@
         <div class="text-muted">Select an image on the left.</div>
       {:else}
 				{#if loaded_selected}
-					   <!-- Original -->
-						 <h5 class="mb-3"><i class="bi bi-image me-2"></i>Original</h5>
-						 {#if preview_item?.raw_file}
-							 <img class="img-fluid rounded shadow-sm mb-3" alt="original" src={makeURL(preview_item.raw_file)} />
-						 {:else}
-							 <div class="text-muted">No original found.</div>
-						 {/if}
+
+				 <!-- Original -->
+				 <h5 class="mb-3"><i class="bi bi-image me-2"></i>Original</h5>
+				
+				 <PreviewRenderer type={preview_item.type} data={preview_item.raw_file} />
+
+					{#if preview_data.output_type=="object_detection" }
+						
+					    <!-- Boxes -->
+							<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Objects overlay</h5>
+							{#if preview_item?.bbox_image}
+							
+									
+								<PreviewRenderer type={preview_item.type} data={preview_item.bbox_image} />
+
+
+							{:else}
+								<div class="text-muted mb-3">No overlay image.</div>
+							{/if}
+			
+							<!-- Objects list -->
+							<h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>Objects</h5>
+							{#if preview_item?.objects?.length}
+								<ul class="list-group mb-3">
+									{#each preview_item.objects as obj, i}
+										<li class="list-group-item d-flex justify-content-between align-items-center">
+											<div>
+												<span class="fw-semibold">{obj.class || 'object'}</span>
+												{#if obj.score != null}
+													<span class="text-muted ms-2">({(obj.score * 100).toFixed(1)}%)</span>
+												{/if}
+												{#if obj.bbox}
+													<small class="text-muted ms-2">
+														[x:{obj.bbox[0] | 0}, y:{obj.bbox[1] | 0}, w:{obj.bbox[2] | 0}, h:{obj.bbox[3] | 0}]
+													</small>
+												{/if}
+											</div>
+											<span class="badge bg-light text-dark">#{i + 1}</span>
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<div class="text-muted mb-3">No objects detected.</div>
+							{/if}
+			
+							<!-- Crops -->
+							<details class="mb-2">
+								<summary class="h6 mb-2"><i class="bi bi-scissors me-2"></i>Cropped images {#if preview_item?.crops?.length}<span class="badge bg-secondary ms-2">{preview_item.crops.length}</span>{/if}</summary>
+								{#if preview_item?.crops?.length}
+									<div class="row g-2">
+										{#each preview_item.crops as c, idx}
+											<div class="col-6 col-lg-4">
+												<PreviewRenderer type={preview_item.type} data={c} />
+												<div class="small text-truncate mt-1">{c.name}</div>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<div class="text-muted">No crops available.</div>
+								{/if}
+							</details>
+					{:else if preview_data.output_type=="segment_image"}
+
+					<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Segmentation mask</h5>
+					{#if preview_item?.mask}
+						<PreviewRenderer type={preview_item.type} data={preview_item.mask} />
+					{:else}
+						<div class="text-muted mb-3">No segmentation masks.</div>
+					{/if}
+
+
+					<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Image overlay mask</h5>
+					{#if preview_item?.overlay}
+						<PreviewRenderer type={preview_item.type} data={preview_item.overlay} />
+					{:else}
+						<div class="text-muted mb-3">No overlay masks.</div>
+					{/if}
+
+					{/if}
+
+
+
+					  
 		 
+
+
+
+
+						
+
 
 
 
 				{:else}
 				<div class="text-muted"> Loadings ... </div>
 				{/if}
-      
+<!--       
+				items.push({
+          key,
+          raw_file: rawFile,
+          bbox_image: bboxImage,
+          crops: cropsForImage,
+          objects: objectsForImage,
+        });
+      }
 
+      return {
+        item_name_list,
+        items,
+        output_type:"object_detection"
+      }; -->
      
-        <!-- Boxes -->
-        <h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Objects overlay</h5>
-        {#if preview_item?.bbox_image}
-          <img class="img-fluid rounded shadow-sm mb-3" alt="boxes" src={makeURL(preview_item.bbox_image[0])} />
-        {:else}
-          <div class="text-muted mb-3">No overlay image.</div>
-        {/if}
-
-        <!-- Objects list -->
-        <h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>Objects</h5>
-        {#if preview_item?.objects?.length}
-          <ul class="list-group mb-3">
-            {#each preview_item.objects as obj, i}
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <span class="fw-semibold">{obj.class || 'object'}</span>
-                  {#if obj.score != null}
-                    <span class="text-muted ms-2">({(obj.score * 100).toFixed(1)}%)</span>
-                  {/if}
-                  {#if obj.bbox}
-                    <small class="text-muted ms-2">
-                      [x:{obj.bbox[0] | 0}, y:{obj.bbox[1] | 0}, w:{obj.bbox[2] | 0}, h:{obj.bbox[3] | 0}]
-                    </small>
-                  {/if}
-                </div>
-                <span class="badge bg-light text-dark">#{i + 1}</span>
-              </li>
-            {/each}
-          </ul>
-        {:else}
-          <div class="text-muted mb-3">No objects detected.</div>
-        {/if}
-
-        <!-- Crops -->
-        <details class="mb-2">
-          <summary class="h6 mb-2"><i class="bi bi-scissors me-2"></i>Cropped images {#if preview_item?.crops?.length}<span class="badge bg-secondary ms-2">{preview_item.crops.length}</span>{/if}</summary>
-          {#if preview_item?.crops?.length}
-            <div class="row g-2">
-              {#each preview_item.crops as c, idx}
-                <div class="col-6 col-lg-4">
-                  <img class="img-fluid border rounded" alt={"crop-"+idx} src={makeURL(c)} />
-                  <div class="small text-truncate mt-1">{c.name}</div>
-                </div>
-              {/each}
-            </div>
-          {:else}
-            <div class="text-muted">No crops available.</div>
-          {/if}
-        </details>
+     
 
   
       {/if}

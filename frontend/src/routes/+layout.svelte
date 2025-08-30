@@ -9,21 +9,22 @@
 	import { onMount } from 'svelte';
 	import Documentation from '$lib/Documentation.svelte';
 	import { getAllSettings, saveAllSettings, getSystemSettings } from '$lib/utils/settings.js';
-	import { translations, userSettings } from '$lib/utils/store.js';
+	import { translations, userSettings, systemSettings } from '$lib/utils/store.js';
 	// import 'typeface-roboto';
 
 	let showInfoRow = $state(false);
 	let models = $state([]);
 	let loaded = $state(false)
 	let userSettingsUI = $state({});
-	let systemSettings = $state({})
+	let systemSettingsUI = $state({})
 
 	onMount(async () => {
 
 		userSettingsUI = getAllSettings()
 		userSettings.set(userSettingsUI)
 		console.log($userSettings)
-		systemSettings = getSystemSettings()
+		systemSettingsUI = getSystemSettings()
+		systemSettings.set(systemSettingsUI)
 		set_theme()
 		await load_language()
 		models = await Library.get_model_list();
@@ -226,6 +227,7 @@
 							{$translations.inference}
 						</a>
 					</li>
+					{#if systemSettingsUI.sections.training}
 					<li class="nav-item">
 						<a class="nav-link d-flex align-items-center gap-2" href="{base}/training">
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-backpack3" viewBox="0 0 16 16">
@@ -235,8 +237,9 @@
 							 {$translations.training}
 						</a>
 					</li>
+					{/if}
 				</ul>
-
+				{#if systemSettingsUI.sections.server}
 				<h6
 					class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"
 				>
@@ -285,6 +288,7 @@
 						</a>
 					</li>
 				</ul>
+				{/if}
 				<h6
 					class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"
 				>

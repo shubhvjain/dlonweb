@@ -5,12 +5,25 @@ const SYSTEM_SETTINGS = {
   languages: [
     { title: "English", key: "en" },
     { title: "Deutsch", key: "de" }
-  ]
+  ],
+  meta:{
+    name:"FLonWeb.js",
+    
+  },
+  sections:{
+    server:false,
+    training:false,
+    custom_inference:false,
+  },
+  contact:{
+    github:"https://github.com/shubhvjain/dlonweb1",
+    email:"shubhvjain@gmail.com"
+  }
 };
 
 const DEFAULT_USER_SETTINGS = {
   backendURL: 'http://localhost:3000',
-  theme: 'dark',
+  theme: 'light',
   language: 'en'
 };
 

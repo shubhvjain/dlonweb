@@ -57,7 +57,7 @@ export class InferenceTask {
   /** Load model into memory (main thread only) */
   async load_model() {
     if (this.model) return;
-    stime = this.now_time();
+    const stime = this.now_time();
     if (this.model_name === "custom") {
       if (!this.model_files)
         throw new Error("model_files required for custom model");
@@ -69,7 +69,7 @@ export class InferenceTask {
         this.model_name
       );
     }
-    etime = this.now_time();
+    const etime = this.now_time();
     this.run_times.run += etime - stime;
     console.log("model loaded");
   }
@@ -226,6 +226,7 @@ export class InferenceTask {
           //console.log(t)
           const out = this.model.predict(t);
           perItemOutputs.push(out);
+          t.dispose()
         }
       } else {
         throw new Error(`Unsupported model interface for ${this.model_name}`);
@@ -325,11 +326,9 @@ export class InferenceTask {
 
     if (task_type == "object_detection") {
       const items = [];
-      const flat_raw = [];
-      const flat_bbox = [];
-      const flat_crops = [];
+    
+     
       let item_name_list = []
-      let totalObjects = 0;
 
       for (const key of this.input_data_obj.filelist) {
         const entry = this.input_data_obj.get_item(key);
@@ -337,16 +336,12 @@ export class InferenceTask {
         //console.log(entry)
         // image-only guard
         if (
-          !entry ||
-          !(entry.raw_file instanceof File) ||
-          !String(entry.type).startsWith("image")
-        ) {
+          entry.type != "image" ) {
           // skip non-image entries for this simple path
           continue;
         }
 
-        item_name_list.push(key)
-        const basename = this._filename_base(entry.raw_file.name);
+        item_name_list.push({name:key,type:entry.type})
         const rawFile = entry.raw_file;
 
         // detections were saved earlier by run_model()
@@ -366,7 +361,7 @@ export class InferenceTask {
         const objectsForImage = Array.isArray(objectsList)
           ? objectsList[0] || []
           : [];
-        totalObjects += objectsForImage.length;
+       
 
         // 2) bounding-box overlay (single image)
         const bboxImages = await this.env.generate_inference_output(
@@ -378,11 +373,8 @@ export class InferenceTask {
         const bboxImage = Array.isArray(bboxImages)
           ? bboxImages[0] || null
           : null;
-        //console.log(bboxImage)
-        flat_bbox.push(bboxImage);
-       
-
-
+      
+    
         // 3) object crops (array of files)
         const cropLists = await this.env.generate_inference_output(
           "object_detection",
@@ -393,15 +385,15 @@ export class InferenceTask {
         const cropsForImage = Array.isArray(cropLists)
           ? cropLists[0] || []
           : [];
-        cropsForImage.map((file) => {flat_crops.push(file);});
+        //cropsForImage.map((file) => {flat_crops.push(file);});
 
-        // raw file listing for "download all raw"
-        flat_raw.push(rawFile);
+       
 
         items.push({
+          type: entry.type,
           key,
           raw_file: rawFile,
-          bbox_image: bboxImages,
+          bbox_image: bboxImage,
           crops: cropsForImage,
           objects: objectsForImage,
         });
@@ -410,32 +402,78 @@ export class InferenceTask {
       return {
         item_name_list,
         items,
-        downloads: {
-          raw_files: flat_raw,
-          bbox_images: flat_bbox,
-          crops: flat_crops,
-        },
-        summary: {
-          total_files: items.length,
-          total_bbox_images: flat_bbox.length,
-          total_crops: flat_crops.length,
-          total_objects: totalObjects,
-        },
+        output_type:"object_detection"
       };
-    } else {
+    }
+    else if (task_type == "segment_image"){
+      let item_name_list = []
+      const items = [];
+     
+      for (const key of this.input_data_obj.filelist) {
+        const entry = this.input_data_obj.get_item(key);
+
+        //console.log(entry)
+        // image-only guard
+        if (
+          ! ["video","image"].includes(entry.type) 
+        ) {
+          // skip non-image entries for this simple path
+          continue;
+        }
+
+        item_name_list.push({name:key,type:entry.type})
+        const rawFile = entry.raw_file;
+
+        // We only expect one input for image (your Data.load() makes input = [rawFile])
+        const inputs =  entry.input 
+        // detections were saved earlier by run_model()
+        const detectionsPerInput =
+          this.input_data_obj.get_results(key, this.model_name) || [];
+
+
+        // 1) mask results
+        const masked_input = await this.env.generate_inference_output(
+          "segment_image",
+          inputs,
+          detectionsPerInput,
+          "mask",
+          this.input_data_obj.options,
+          entry.type
+        );
+        //console.log(objectsList)
+        const masked_input_output = Array.isArray(masked_input) ? masked_input[0] :  masked_input
+
+
+        // 2) overlay results
+        const overlay_input = await this.env.generate_inference_output(
+          "segment_image",
+          inputs,
+          detectionsPerInput,
+          "overlay",
+          this.input_data_obj.options,
+          entry.type
+        );
+        //console.log(objectsList)
+        const overlay_input_output = Array.isArray(overlay_input) ? overlay_input[0] :  overlay_input
+
+        console.log(overlay_input_output)
+        items.push({
+          key,
+          type: entry.type,
+          raw_file: rawFile,
+          mask: masked_input_output,
+          overlay: overlay_input_output,
+        });
+      }
+
+      return {
+        item_name_list,
+        items,
+        output_type:"segment_image"
+      };
+    }
+    else {
       throw new Error(`generate_outputs: unsupported task_type "${task_type}"`);
     }
-  }
-
-  _filename_base(name = "") {
-    const dot = name.lastIndexOf(".");
-    return dot > 0 ? name.slice(0, dot) : name || "image";
-  }
-
-  _safe_label(label = "object") {
-    return String(label)
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]+/g, "");
   }
 }
