@@ -17,9 +17,9 @@
 	 * - `emit_output` : this is a method that other components can use to get the output of the model
 	 */
 	let {
-		component_valid = $bindable(false), 
+		component_valid = $bindable(false),
 		model_name,
-		emit_output = ()=>{},
+		emit_output = () => {},
 		task_running = $bindable(false)
 	} = $props();
 
@@ -35,7 +35,7 @@
 	};
 
 	let dev_mode = $state(false);
-	let options_enabled = $state(false)
+	let options_enabled = $state(false);
 
 	// To manage input
 	let input_valid = $state(false);
@@ -60,7 +60,7 @@
 
 	onMount(async () => {
 		await load_page();
-		//task_running = true 
+		//task_running = true
 	});
 
 	/**
@@ -97,11 +97,12 @@
 	const check_valid = () => {
 		let er = [];
 		if (!selected_model) {
-			er.push('No model selected for inference task');
+
+			er.push($translations["no_model"]);
 			//component_valid = false;
 		}
 		if (!input_valid) {
-			er.push('No data provided or data provided is invalid');
+			er.push($translations["no_input"]);
 		}
 		//error = er.join(', \n');
 		if (er.length > 0) {
@@ -157,11 +158,11 @@
 	const inference_pipeline = async () => {
 		try {
 			if (!selected_model || !input_valid) {
-				throw new Error('Model or input invalid');
+				throw new Error($translations["pipeline_invalid"]);
 			}
 			task_running = true;
 			progress = { percent: 0 };
-			set_success('Initializing');
+			set_success($translations["pipeline1"]);
 
 			// Create worker if not already exists
 			if (!worker) {
@@ -185,7 +186,7 @@
 				if (msg.type === 'progress') {
 					// your worker posts { type: 'progress', percent }
 					updateProgressFromPercent(msg.percent);
-					set_success(`Processing ${Math.round(progress.percentage)}%`);
+					set_success(`Progress : ${Math.round(progress.percent)}%`);
 				} else if (msg.type === 'error') {
 					// surface worker error (in case InferenceTask doesn't already reject)
 					rejectWorkerError(new Error(msg.error || 'Worker error'));
@@ -198,14 +199,14 @@
 			// 3) gather files
 			const filesArray = Array.from(get(filesStore) || []);
 			if (filesArray.length === 0) {
-				throw new Error('No input files available');
+				throw new Error($translations["no_input"]);
 			}
 
 			// 4) build data (preprocess on load — e.g., decode video → frames)
-			set_success('Loading input…');
+			set_success($translations["pipeline1"]);
 			const data = new Data(adaptor, filesArray, sanitizeJSON(input_options));
 			await data.load();
-			set_success('Data loaded');
+			set_success($translations["pipeline2"]);
 
 			// 5) prepare inference task in web_worker mode
 			const task = new InferenceTask({
@@ -216,7 +217,7 @@
 			});
 
 			await task.load_data(data);
-			set_success('Model & inputs ready');
+			set_success($translations["pipeline3"])
 
 			// 6) run model; combine task callback + worker progress
 			const runPromise = task.run_model((pct) => {
@@ -228,37 +229,28 @@
 			// If the race resolved from runPromise, grab its value; if it was the worker error,
 			// the catch below will handle it.
 			output = result || (await runPromise);
-			set_success('Inference complete');
+			set_success($translations["pipeline4"])
 			console.log('Pipeline output:', output);
 			//console.log(task)
 			task_running = false;
-			emit_output(task)
+			emit_output(task);
 		} catch (err) {
 			task_running = false;
 			set_error(`Pipeline failed: ${err.message}`);
-
 			console.error('Pipeline error:', err);
-			// error = `Pipeline failed: ${err.message}`;
 		}
-		// finally {
-
-		// 	// Reset progress after a delay to show completion
-		// 	setTimeout(() => {
-		// 		progress = { current: 0, total: 0, percentage: 0 };
-		// 	}, 2000);
-		// }
 	};
 
 	// Cancel the running pipeline
 	const cancel_pipeline = () => {
 		if (pipeline && task_running) {
 			pipeline.cancel();
-			set_error("Cancelling")
+			set_error('Cancelling');
 			task_running = false;
-			progress = { percent:0};
+			progress = { percent: 0 };
 
 			setTimeout(() => {
-				set_success("Inference pipeline stopped")
+				set_success('Inference pipeline stopped');
 			}, 500);
 		}
 	};
@@ -295,135 +287,123 @@
 	});
 </script>
 
-
-
 <div class="card">
 	<div class="card-header">
 		{$translations.inference}
 	</div>
 	<div class="card-body">
-	
+		<div class="p-1 mb-2 pt-2">
+			<!-- {#if workerRunning}<p>Progress: {progress.percentage.toFixed(1)}%</p>{/if} -->
+			<h5 class="card-title">1. {$translations.choose_model}</h5>
 
+			<select
+				class="form-select form-select-lg"
+				aria-label="select model"
+				onchange={() => select_model(selected_model)}
+				bind:value={selected_model}
+				disabled={model_name}
+			>
+				<option value="" selected>Select</option>
+				{#each modelList as m}
+					<option value={m.value}> {m.label[$userSettings['language']]} </option>
+				{/each}
+				<!-- <option value="custom">Use Your Own Tensorflow Model</option> -->
+			</select>
 
-<div class="p-1 mb-2 pt-2">
-	<!-- {#if workerRunning}<p>Progress: {progress.percentage.toFixed(1)}%</p>{/if} -->
-	<h5 class="card-title">1. {$translations.choose_model}</h5>
+			{#if custom_model_used}
+				<div class="alert alert-info">
+					<strong>Custom Model:</strong> Upload your model files (.json + .bin)
+				</div>
+			{/if}
 
-	<select
-		class="form-select form-select-lg "
-		aria-label="select model"
-		onchange={() => select_model(selected_model)}
-		bind:value={selected_model}
-		disabled={model_name}
-	>
-		<option value="" selected>Select</option>
-		{#each modelList as m}
-			<option value={m.value}> {m.label[$userSettings['language']]} </option>
-		{/each}
-		<!-- <option value="custom">Use Your Own Tensorflow Model</option> -->
-	</select>
-
-	{#if custom_model_used}
-		<div class="alert alert-info ">
-			<strong>Custom Model:</strong> Upload your model files (.json + .bin)
+			{#if selected_model}
+				<div class="alert alert-light" role="alert">
+					<p>{model_details.description[$userSettings['language']]}</p>
+				</div>
+			{/if}
 		</div>
-	{/if}
 
-	{#if selected_model}
-		<div class="alert alert-light" role="alert">
-			<p>{model_details.description[$userSettings['language']]}</p>
+		<div class="p-1 mb-2 border-top pt-4">
+			<h5 class="card-title">2. {$translations.upload_data}</h5>
+			<Input data_emit={on_input_valid} />
 		</div>
-	{/if}
-</div>
 
-<div class="p-1 mb-2 border-top pt-4">
-	<h5 class="card-title">2. {$translations.upload_data}</h5>
-	<Input data_emit={on_input_valid} />
-</div>
+		{#if options_enabled}
+			<details class="p-1 mb-2 mt-2 border-top pt-4">
+				<summary>
+					<h5 class="card-title d-inline">3. {$translations.inference_options}</h5>
+				</summary>
 
-
-{#if options_enabled}
-<details class="p-1 mb-2 mt-2 border-top pt-4">
-  <summary>
-    <h5 class="card-title d-inline">3. {$translations.inference_options}</h5>
-  </summary>
-
-  <div class="mb-3 mt-3 row">
-    <label for="execution-location" class="col-sm-3 col-form-label">Run task on</label>
-    <div class="col-sm-9">
-      <select
-        class="form-select mb-3"
-        aria-label="select execution location"
-        bind:value={select_location}
-        id="execution-location"
-      >
-        <option value="browser" selected>Browser</option>
-        <option value="server">Server</option>
-      </select>
-    </div>
-  </div>
-</details>	
-{/if}
-
-
-<!-- <hr> -->
-<div class="d-flex align-items-center p-1 border-top pt-2">
-	<!-- Left section: Error / Progress / Status -->
-	<div class="flex-grow-1 me-3">
-		{#if status.text}
-			<div class="text-{status.type} mb-2">{status.text}</div>
+				<div class="mb-3 mt-3 row">
+					<label for="execution-location" class="col-sm-3 col-form-label">Run task on</label>
+					<div class="col-sm-9">
+						<select
+							class="form-select mb-3"
+							aria-label="select execution location"
+							bind:value={select_location}
+							id="execution-location"
+						>
+							<option value="browser" selected>Browser</option>
+							<option value="server">Server</option>
+						</select>
+					</div>
+				</div>
+			</details>
 		{/if}
 
-		{#if task_running && progress.percent > 0}
-			<div aria-live="polite" style="margin-top: .5rem;">
-				<progress max="100" value={progress.percent}></progress>
-				<span style="margin-left:.5rem;">{progress.percent}%</span>
-			
+		<!-- <hr> -->
+		<div class="d-flex align-items-center p-1 border-top pt-2">
+			<!-- Left section: Error / Progress / Status -->
+			<div class="flex-grow-1 me-3">
+				{#if status.text}
+					<div class="text-{status.type} mb-2">{status.text}</div>
+				{/if}
+
+				{#if task_running && progress.percent > 0}
+					<div aria-live="polite" style="margin-top: .5rem;">
+						<progress max="100" value={progress.percent}></progress>
+						<span style="margin-left:.5rem;">{progress.percent}%</span>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Right section: Buttons -->
+			<div class="d-flex flex-column">
+				<button
+					class="btn btn-lg btn-success mb-2"
+					disabled={task_running || error}
+					onclick={inference_pipeline}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="30"
+						height="30"
+						fill="currentColor"
+						class="bi bi-play-fill"
+						viewBox="0 0 16 16"
+					>
+						<path
+							d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"
+						/>
+					</svg>
+					{$translations['run']}
+				</button>
+
+				<!-- {#if task_running}
+			<button class="btn btn-link" onclick={cancel_pipeline}> Cancel </button>
+		{/if} -->
+			</div>
+		</div>
+
+		{#if dev_mode}
+			<div>
+				<button class="btn btn-link" onclick={test_tensor_generation}>
+					Test tensor generation
+				</button>
 			</div>
 		{/if}
-
-		
-	</div>
-
-	<!-- Right section: Buttons -->
-	<div class="d-flex flex-column">
-		<button
-			class="btn btn-lg btn-success mb-2"
-			disabled={task_running || error}
-			onclick={inference_pipeline}
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="30"
-				height="30"
-				fill="currentColor"
-				class="bi bi-play-fill"
-				viewBox="0 0 16 16"
-			>
-				<path
-					d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"
-				/>
-			</svg>
-			Run
-		</button>
-
-		{#if task_running}
-			<button class="btn btn-link" onclick={cancel_pipeline}> Cancel </button>
-		{/if}
 	</div>
 </div>
-
-{#if dev_mode}
-	<div>
-		<button class="btn btn-link" onclick={test_tensor_generation}> Test tensor generation </button>
-
-	</div>
-{/if}
-
-	</div>
-</div>
-
-
 
 <style>
 	.loader {

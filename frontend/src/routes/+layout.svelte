@@ -138,7 +138,7 @@
 					{/each}
 				</button>
 				<ul class="dropdown-menu" aria-labelledby="languageDropdown">
-					{#each systemSettings.languages as lang}
+					{#each systemSettingsUI.languages as lang}
 						<li>
 							<a
 								class="dropdown-item {lang.key === userSettingsUI.language ? 'active' : ''}"
@@ -326,7 +326,7 @@
 	</div>
 
 	<!-- Main content + info panel (flex container) -->
-	<div class="offset-md-3 offset-lg-2 col-md-9 col-lg-10 d-flex p-0">
+	<div class="offset-md-3 offset-lg-2 col-md-9 col-lg-10 d-flex p-0" >
 		<!-- Main content area -->
 		<main class={showInfoRow ? 'col-8 px-md-4 pt-4' : 'col-12 px-md-4 pt-4'}>
 			{@render children()}
@@ -336,7 +336,8 @@
 		{#if showInfoRow}
 			<div
 				class="col-4 px-3 pt-4 border-start vh-100 position-fixed end-0 top-2"
-				style="z-index: 1030;"
+				
+				style="z-index: 1030;background: var(--bs-body-bg);overflow-y: scroll;"
 			>
 				<div class="info-panel">
 					<div class="d-flex justify-content-between align-items-center mb-3">

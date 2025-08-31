@@ -58,54 +58,7 @@
 			bind:task_running={page_processing}
 			model_name={modelName}
 			emit_output={appendOutputs}
-		/>
-
-
-		
-			<!-- <div class="card text-center border  {status.input?" border-success-subtle ":" border-danger-subtle  "} " >
-				<div class="card-body">
-					<Input bind:data_valid={status.input} bind:data={input}/>
-				</div>
-			</div> -->
-
-			<!-- <div class="card text-center">
-				<div class="card-body">
-					<h6 class="card-title border-bottom">Model</h6>
-				
-					{#if status.modelSelected }
-						{ JSON.stringify(model)}
-					{:else}
-						model can be selected
-					{/if}
-				</div>
-			</div> -->
-			{#if outputs.length > 0}
-				<div class="text-center">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="45"
-						height="45"
-						fill="currentColor"
-						class="bi bi-arrow-down"
-						viewBox="0 0 16 16"
-					>
-						<path
-							fill-rule="evenodd"
-							d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"
-						/>
-					</svg>
-				</div>
-			{/if}
-			<div class="row">
-				{#each outputs as out}
-					<div class="card text-center col-lg-12">
-						<div class="card-body">
-							<h6 class="card-title border-bottom">Output</h6>
-							<Output output={out} />
-						</div>
-					</div>
-				{/each}
-			</div>
+		/>			
 		</div>
 	</div>
 
