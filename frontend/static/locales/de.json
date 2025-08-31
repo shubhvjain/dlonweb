@@ -28,5 +28,12 @@
   "pipeline1":"Starte...",
   "pipeline2":"Daten werden geladen...",
   "pipeline3":"Arbeitet...",
-  "pipeline4":"Fertig!"
+  "pipeline4":"Fertig!",
+  "website":"Zur Website",
+  "model_input":"Eingabe",
+  "model_output":"Ausgabe",
+  "use_model": "Modell verwenden",
+  "model_output_image_segmentation": "Bildsegmentierung",
+  "model_output_bounding_boxes": "Objekte in einem Bild",
+  "model_example":"Beispiele"
 }

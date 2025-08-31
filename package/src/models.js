@@ -9,8 +9,12 @@ export class Library {
     projects: {
       tf: {
         list: false,
-        title_short: "Tensorflow",
-        website: "https://cocodataset.org",
+        title: "Pre-trained models available in TensorFlow.js",
+        website: "https://github.com/tensorflow/tfjs-models",
+        about: {
+          en: "A collection of ready-to-use machine learning models, optimized for TensorFlow.js and the browser. These models cover tasks such as object detection, image classification, and more.",
+          de: "Eine Sammlung gebrauchsfertiger Machine-Learning-Modelle, optimiert für TensorFlow.js und die Ausführung im Browser. Die Modelle decken Aufgaben wie Objekterkennung, Bildklassifikation und weitere Anwendungsfälle ab.",
+        },
         models: {
           "coco-ssd": {
             active: true,
@@ -22,12 +26,17 @@ export class Library {
             },
             model_output: "bounding_boxes",
             title: {
-              en: "Detect objects in images",
+              en: "Detect Objects in Images",
               de: "Objekte in Bildern erkennen",
             },
             description: {
-              en: "Upload an image and the model will highlight and label common objects such as people, cars, or animals. Input: JPG/PNG image. Output: Detected objects with bounding boxes.",
-              de: "Laden Sie ein Bild hoch, und das Modell markiert und benennt gängige Objekte wie Personen, Autos oder Tiere. Eingabe: JPG/PNG-Bild. Ausgabe: Erkannte Objekte mit Begrenzungsrahmen.",
+              en: "This pre-trained object detection model can identify and localize multiple objects within a single image. By uploading an image, the model will detect common objects such as people, cars, or animals and mark them with bounding boxes.",
+              de: "Dieses vortrainierte Objekterkennungsmodell kann mehrere Objekte in einem einzelnen Bild identifizieren und lokalisieren. Nach dem Hochladen eines Bildes erkennt das Modell gängige Objekte wie Personen, Autos oder Tiere und markiert sie mit Begrenzungsrahmen.",
+            },
+            images: {
+              input: "library/assets/object_input.png",
+              output: "library/assets/object_output.png",
+              icon: "library/assets/object_icon.png",
             },
             path: "",
           },
@@ -36,9 +45,13 @@ export class Library {
 
       bagls: {
         list: true,
-        title_short: "BAGLS",
-        title: "Benchmark for Automatic Glottis Segmentation (BAGLS)",
+        title: "The BAGLS project: Benchmark for Automatic Glottis Segmentation",
         website: "https://www.bagls.org/",
+        about: {
+          en: "BAGLS is the first large-scale, publicly available dataset of endoscopic high-speed video with frame-wise segmentation annotations. Collected in collaboration with seven institutions, it comprises 59,250 annotated frames.",
+          de: "BAGLS ist der erste groß angelegte, frei verfügbare Datensatz aus endoskopischen Hochgeschwindigkeitsvideos mit bildweisen Segmentierungsannotationen. Er wurde in Zusammenarbeit mit sieben Einrichtungen erstellt und umfasst 59.250 annotierte Frames.",
+        },
+
         models: {
           segment: {
             active: true,
@@ -49,19 +62,24 @@ export class Library {
               dtype: "float32",
               normalize: true,
               addBatchDim: true,
-              targetHeight:256,
-              targetWidth: 256
+              targetHeight: 256,
+              targetWidth: 256,
             },
             model_output: "image_segmentation",
             title: {
-              en: "Segment glottis in endoscopy data",
+              en: "Segment the glottis in endoscopy data",
               de: "Glottis in Endoskopie-Daten segmentieren",
             },
             description: {
-              en: "Upload endoscopy images or videos and the model will automatically outline the glottis region. Input: Image/Video. Output: Segmentation mask showing glottis area.",
-              de: "Laden Sie Endoskopie-Bilder oder -Videos hoch, und das Modell markiert automatisch den Glottisbereich. Eingabe: Bild/Video. Ausgabe: Segmentierungsmaske mit Glottisbereich.",
+              en: "Upload endoscopy images or videos and the model will automatically outline the glottis (the opening between the vocal cords).",
+              de: "Laden Sie Endoskopie-Bilder oder -Videos hoch; das Modell markiert automatisch die Glottis (die Öffnung zwischen den Stimmbändern).",
             },
             path: "library/bagls_rgb",
+            images: {
+              input: "library/assets/bagls_input.png",
+              output: "library/assets/bagls_output.png",
+              icon: "library/assets/bagls_icon.png",
+            },
           },
         },
       },
@@ -71,7 +89,7 @@ export class Library {
   /**
    * Load static or remote model registry.
    */
-  static  load_data() {
+  static load_data() {
     // Future: replace with fetch if external registry is needed
     return this.data;
   }
@@ -81,7 +99,7 @@ export class Library {
    * Useful for building dropdowns or UIs.
    */
   static async get_model_list() {
-    const data =  this.load_data();
+    const data = this.load_data();
     const result = [];
 
     for (const [projectKey, project] of Object.entries(data.projects)) {
@@ -103,15 +121,17 @@ export class Library {
    * @param {string|array} args - "project.model" or [project, model]
    */
   static async get_model(...args) {
-    const data =  this.load_data();
+    const data = this.load_data();
     let projectKey, modelKey;
-    console.log(args)
+    console.log(args);
     if (args.length === 1) {
       [projectKey, modelKey] = args[0].split(".");
     } else if (args.length === 2) {
       [projectKey, modelKey] = args;
     } else {
-      throw new Error("Invalid arguments: must be 'project.model' or [project, model]");
+      throw new Error(
+        "Invalid arguments: must be 'project.model' or [project, model]"
+      );
     }
 
     const project = data.projects[projectKey];
@@ -126,9 +146,9 @@ export class Library {
    * @param {object} env - injected environment with tf + path resolver
    * @param {string} modelKey - full key like "tf.coco-ssd"
    */
-  static async load_model(env,basePath, modelKey) {
+  static async load_model(env, basePath, modelKey) {
     if (!env || !env.tf) throw new Error("env with tf required");
-   
+
     const modelInfo = await this.get_model(modelKey);
     if (!modelInfo) throw new Error(`Model not found: ${modelKey}`);
 
@@ -139,7 +159,7 @@ export class Library {
 
     // Otherwise use standard tf.loadLayersModel
     if (modelInfo.path) {
-     // const basePath = env.resolveModelLibraryPath();
+      // const basePath = env.resolveModelLibraryPath();
       const modelUrl = `${basePath}${modelInfo.path}/model.json`;
       return await env.tf.loadLayersModel(modelUrl);
     }
@@ -152,71 +172,74 @@ export class Library {
    * Used to normalize data preparation across different models.
    * Returns only standard fields: { inputShape, dtype, normalize, addBatchDim }
    */
-static  get_model_options(modelName, model = null) {
-  // Special-case: coco-ssd (dynamic H/W, no batch, no normalize, int32)
-  if (modelName === "tf.coco-ssd") {
-    return {
-      inputShape: [1, -1, -1, 3],
-      dtype: "int32",
-      normalize: false,
-      addBatchDim: false,
-    };
-  }
-
-  const defaults = {
-    inputShape: [1, 224, 224, 3],
-    dtype: "float32",
-    normalize: true,
-    addBatchDim: true,
-  };
-
-  // 1) Registry (if available)
-  const data =  this.load_data();
-  const [projectKey, modelKey] = (modelName || "").split(".");
-  if (!projectKey || !modelKey) throw new Error("invalid model name (expected 'project.model')");
-  const reg = data?.projects?.[projectKey]?.models?.[modelKey];
-
-  const fromRegistry = {};
-  if (reg?.model_input_options) {
-    const mio = reg.model_input_options;
-    if (mio.inputShape) fromRegistry.inputShape = mio.inputShape;
-    if (mio.dtype) fromRegistry.dtype = mio.dtype;
-    if (typeof mio.normalize !== "undefined") fromRegistry.normalize = mio.normalize;
-    if (typeof mio.addBatchDim !== "undefined") fromRegistry.addBatchDim = mio.addBatchDim;
-  }
-
-  // 2) Inference from loaded model (optional)
-  const fromModel = {};
-  if (model && Array.isArray(model.inputs) && model.inputs.length) {
-    const t = model.inputs[0];
-    const shape = (t.shape || []).map((d, i) => (d == null || d < 0 ? (i === 0 ? 1 : -1) : d));
-    if (shape.length) fromModel.inputShape = shape;
-    if (t.dtype) fromModel.dtype = t.dtype;
-    // Heuristic: 4D input -> batch dim likely present
-    if (shape.length) fromModel.addBatchDim = shape.length > 3;
-    // Keep normalize default unless registry overrides it
-  }
-
-  // 3) Merge: defaults < fromModel < fromRegistry
-  const merged = { ...defaults, ...fromModel, ...fromRegistry };
-
-  // 4) Sanitize shape to 4D and batch dim if requested
-  let s = merged.inputShape;
-  if (Array.isArray(s)) {
-    if (s.length === 3 && merged.addBatchDim) s = [1, ...s];
-    if (s.length === 4) {
-      // Ensure batch is concrete (1), keep H/W dynamic if unknown
-      s = s.map((d, i) => (d == null || d < 0 ? (i === 0 ? 1 : -1) : d));
+  static get_model_options(modelName, model = null) {
+    // Special-case: coco-ssd (dynamic H/W, no batch, no normalize, int32)
+    if (modelName === "tf.coco-ssd") {
+      return {
+        inputShape: [1, -1, -1, 3],
+        dtype: "int32",
+        normalize: false,
+        addBatchDim: false,
+      };
     }
-    merged.inputShape = s;
-  } else {
-    merged.inputShape = defaults.inputShape;
+
+    const defaults = {
+      inputShape: [1, 224, 224, 3],
+      dtype: "float32",
+      normalize: true,
+      addBatchDim: true,
+    };
+
+    // 1) Registry (if available)
+    const data = this.load_data();
+    const [projectKey, modelKey] = (modelName || "").split(".");
+    if (!projectKey || !modelKey)
+      throw new Error("invalid model name (expected 'project.model')");
+    const reg = data?.projects?.[projectKey]?.models?.[modelKey];
+
+    const fromRegistry = {};
+    if (reg?.model_input_options) {
+      const mio = reg.model_input_options;
+      if (mio.inputShape) fromRegistry.inputShape = mio.inputShape;
+      if (mio.dtype) fromRegistry.dtype = mio.dtype;
+      if (typeof mio.normalize !== "undefined")
+        fromRegistry.normalize = mio.normalize;
+      if (typeof mio.addBatchDim !== "undefined")
+        fromRegistry.addBatchDim = mio.addBatchDim;
+    }
+
+    // 2) Inference from loaded model (optional)
+    const fromModel = {};
+    if (model && Array.isArray(model.inputs) && model.inputs.length) {
+      const t = model.inputs[0];
+      const shape = (t.shape || []).map((d, i) =>
+        d == null || d < 0 ? (i === 0 ? 1 : -1) : d
+      );
+      if (shape.length) fromModel.inputShape = shape;
+      if (t.dtype) fromModel.dtype = t.dtype;
+      // Heuristic: 4D input -> batch dim likely present
+      if (shape.length) fromModel.addBatchDim = shape.length > 3;
+      // Keep normalize default unless registry overrides it
+    }
+
+    // 3) Merge: defaults < fromModel < fromRegistry
+    const merged = { ...defaults, ...fromModel, ...fromRegistry };
+
+    // 4) Sanitize shape to 4D and batch dim if requested
+    let s = merged.inputShape;
+    if (Array.isArray(s)) {
+      if (s.length === 3 && merged.addBatchDim) s = [1, ...s];
+      if (s.length === 4) {
+        // Ensure batch is concrete (1), keep H/W dynamic if unknown
+        s = s.map((d, i) => (d == null || d < 0 ? (i === 0 ? 1 : -1) : d));
+      }
+      merged.inputShape = s;
+    } else {
+      merged.inputShape = defaults.inputShape;
+    }
+
+    // 5) Return only standard keys
+    const { inputShape, dtype, normalize, addBatchDim } = merged;
+    return { inputShape, dtype, normalize, addBatchDim };
   }
-
-  // 5) Return only standard keys
-  const { inputShape, dtype, normalize, addBatchDim } = merged;
-  return { inputShape, dtype, normalize, addBatchDim };
-}
-
-  
 }

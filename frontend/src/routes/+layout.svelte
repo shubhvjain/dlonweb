@@ -19,7 +19,6 @@
 	let systemSettingsUI = $state({})
 
 	onMount(async () => {
-
 		userSettingsUI = getAllSettings()
 		userSettings.set(userSettingsUI)
 		console.log($userSettings)
@@ -28,7 +27,6 @@
 		set_theme()
 		await load_language()
 		models = await Library.get_model_list();
-		//console.log(translations)
 		import('bootstrap').then(({ Tooltip }) => {
 			const tooltipTriggerList = [].slice.call(
 				document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -60,7 +58,6 @@
       translations.set({}); // fallback
     }
   };
-
 
 	const toggle_theme = () => {
 		userSettingsUI.theme = userSettingsUI.theme === 'light'? 'dark':'light'
@@ -106,7 +103,7 @@
 
 	<!-- Right side toggle theme button -->
 	<div class="ms-auto me-3 d-flex align-items-center">
-		<button id="theme-toggle" class="btn btn-sm" onclick={toggle_theme}>
+		<button id="theme-toggle" class="btn btn-sm"  	title="Toggle theme" onclick={toggle_theme}>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				width="14"
@@ -114,6 +111,7 @@
 				fill="currentColor"
 				class="bi bi-moon"
 				viewBox="0 0 16 16"
+			
 			>
 				<path
 					d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278M4.858 1.311A7.27 7.27 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.32 7.32 0 0 0 5.205-2.162q-.506.063-1.029.063c-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286"
@@ -129,9 +127,10 @@
 					type="button"
 					id="languageDropdown"
 					data-bs-toggle="dropdown"
+					title="Toggle language"
 					aria-expanded="false"
 				>
-					{#each systemSettings.languages as lang}
+					{#each systemSettingsUI.languages as lang}
 						{#if lang.key === userSettingsUI.language}
 							{lang.title}
 						{/if}
@@ -155,20 +154,13 @@
 				aria-label="Show documentation page"
 				class="btn btn-sm"
 				type="button"
+				title="Help"
 				onclick={() => (showInfoRow = !showInfoRow)}
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					fill="currentColor"
-					class="bi bi-info-lg"
-					viewBox="0 0 16 16"
-				>
-					<path
-						d="m9.708 6.075-3.024.379-.108.502.595.108c.387.093.464.232.38.619l-.975 4.577c-.255 1.183.14 1.74 1.067 1.74.72 0 1.554-.332 1.933-.789l.116-.549c-.263.232-.65.325-.905.325-.363 0-.494-.255-.402-.704zm.091-2.755a1.32 1.32 0 1 1-2.64 0 1.32 1.32 0 0 1 2.64 0"
-					/>
-				</svg>
+		
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 16 16">
+				<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247m2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
+			</svg>
 			</button>
 		{/if}
 	</div>
@@ -203,8 +195,8 @@
 					aria-current="page"
 					href="/about"
 				>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-info" viewBox="0 0 16 16">
-					<path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill" viewBox="0 0 16 16">
+					<path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2"/>
 				</svg>
 					{$translations.about}
 				</a>
@@ -212,17 +204,8 @@
 			</li> 
 					<li class="nav-item">
 						<a class="nav-link d-flex align-items-center gap-2" href="{base}/inference">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="30"
-								height="30"
-								fill="currentColor"
-								class="bi bi-play"
-								viewBox="0 0 16 16"
-							>
-								<path
-									d="M10.804 8 5 4.633v6.734zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696z"
-								/>
+							<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+								<path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
 							</svg>
 							{$translations.inference}
 						</a>
@@ -292,9 +275,23 @@
 				<h6
 					class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"
 				>
-					<span> {$translations.model_library}</span>
+					<span>  {$translations.model_library}</span>
 				</h6>
 				<ul class="nav flex-column mb-auto">
+
+
+					<li class="nav-item">
+						<a
+							class="nav-link d-flex align-items-center gap-2"
+							href={base + '/library'}
+						>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-view-stacked" viewBox="0 0 16 16">
+							<path d="M3 0h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm0 8h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
+						</svg>
+						{$translations.model_library}
+						</a>
+					</li>
+
 					{#each models as mdl}
 						<li class="nav-item">
 							<a

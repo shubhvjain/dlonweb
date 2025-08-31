@@ -1,5 +1,5 @@
 {
-  "about": "About this App",
+  "about": "About the App",
   "inference": "Make Predictions",
   "training": "Train a New Model",
   "utilities": "Extra Tools",
@@ -28,5 +28,12 @@
   "pipeline1":"Starting...",
   "pipeline2":"Loading your data...",
   "pipeline3":"Working...",
-  "pipeline4":"Done!"
+  "pipeline4":"Done!",
+  "website":"View website",
+  "model_input":"Input",
+  "model_output":"Output",
+  "use_model":"Use model",
+  "model_output_image_segmentation":"Image segmentation",
+  "model_output_bounding_boxes":"Objects in an image",
+  "model_example":"Examples"
 }

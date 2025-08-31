@@ -1,7 +1,6 @@
 <!-- PreviewRenderer.svelte -->
 <script>
   	import { onMount } from 'svelte';
-	import { load } from '../../routes/inference/[modelname]/+page';
 
   let  {type,data} =  $props();
   let loaded = $state(false)

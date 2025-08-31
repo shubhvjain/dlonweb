@@ -7,7 +7,7 @@
 	import { translations, userSettings } from '$lib/utils/store.js';
 	import JSZip from 'jszip';
 
-	import PreviewRenderer from './utils/PreviewRenderer.svelte';
+	import PreviewRenderer from './_PreviewRenderer.svelte';
 
 	let preview_data = $state({})
 	let show_loader = $state(false);
@@ -62,14 +62,20 @@
   };
 
 
+	let valid_downloads = {
+			"segment_image":["raw_file","mask","overlay"],
+			"object_detection":["raw_file","bbox_image","crops","objects"]
+		}
+
 	async function  download() {
 
-		
-		
 
-		if(!preview_data.downloads[selected_type]){
+	
+		if(!  Object.keys(valid_downloads).includes(preview_data.output_type)   [selected_type]){
 			throw new Error("Invalid selection")
 		}
+
+
 		const zip = new JSZip();
 		let files = preview_data.downloads[selected_type]
 		//console.log(files)

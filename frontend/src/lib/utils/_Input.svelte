@@ -15,7 +15,7 @@
 
 	import { translations, userSettings } from '$lib/utils/store.js';
 
-	import DataPreview  from "$lib/_InputPreview.svelte"
+	import DataPreview  from "$lib/utils/_InputPreview.svelte"
 	//let file = $state(null);
 	
 	let fps = $state(10); // default FPS for videos

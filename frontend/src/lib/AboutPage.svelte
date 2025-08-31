@@ -2,26 +2,114 @@
 	import { Library } from 'dlonwebjs';
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
+	import {systemSettings,userSettings,translations} from "$lib/utils/store"
 	let custom_models = $state({});
 	let loaded = $state(false);
 	onMount(async () => {
-		let data =   await Library.loadData()
+		let data =   await Library.load_data()
 		custom_models = data["projects"]
 		//console.log(custom_models)
 		loaded = true;
 	});
+
 </script>
 
-<div class="row justify-content-md-center">
-	<div class="col-lg-8">
 
-		<div class="p-4 py-5 p-md-5 mb-4 rounded text-body-emphasis bg-body-secondary">
+
+
+<!-- Hero Section -->
+<!-- <header class="bg-primary text-white text-center py-5">
+	<div class="container">
+		<h1 class="display-4 fw-bold">Welcome to Federated Learning</h1>
+		<p class="lead">Privacy-Preserving Collaborative AI Training</p>
+		<a href="#about" class="btn btn-light btn-lg mt-3">Learn More</a>
+	</div>
+</header> -->
+
+<!-- About Section -->
+<!-- <section id="about" class="py-5">
+	<div class="container">
+		<div class="row align-items-center">
+			<div class="col-md-6 mb-4">
+				<img src="https://via.placeholder.com/500x300" alt="Federated Learning Illustration" class="img-fluid rounded shadow">
+			</div>
+			<div class="col-md-6">
+				<h2 class="fw-bold">What is Federated Learning?</h2>
+				<p class="text-muted">
+					Federated Learning allows multiple devices or organizations to collaboratively train a machine learning model without sharing raw data. 
+					Instead, only model updates are exchanged, ensuring data privacy and security.
+				</p>
+				<ul class="list-group list-group-flush">
+					<li class="list-group-item">🔒 Data privacy preserved</li>
+					<li class="list-group-item">⚡ Efficient model training</li>
+					<li class="list-group-item">🌍 Collaboration across devices/organizations</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</section> -->
+
+
+
+
+
+
+<div class="row justify-content-md-center">
+	<div class="col-lg-9">
+		<nav class="navbar navbar-expand-lg">
+			<div class="container">
+				
+			
+				<div class="collapse navbar-collapse" id="navbarNav">
+					<ul class="navbar-nav ms-auto">
+						
+						<li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+						<li class="nav-item"><a class="nav-link" href="#library">Library</a></li>
+						<li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+					</ul>
+				</div>
+			</div>
+		</nav>
+		<div class="p-4 py-5 p-md-5 mb-4 rounded text-body-emphasis bg-body-tertiary">
 			<div class="col-lg-12 lg-auto px-0">
-				<h1 class="display-6 fst-italic1">Federated learning in your browser</h1>
+			
+				<h1 class="display-6 fst-italic1">Federated learning right in your browser</h1>
 				<p class="lead my-3">
 					Intro here 
 				</p>
-        <button class="btn btn-outline-secondary" type="button">Run inference</button> <button class="ms-2 btn btn-outline-secondary" type="button">Train a model</button>
+				<a class="btn btn-outline-secondary" type="button"  href="#about">Learn more</a> 
+
+        <a class="btn btn-outline-secondary" type="button"  href="{base}/inference">Run prediction</a> 
+				{#if $systemSettings.sections.training}
+					<a class="btn btn-outline-secondary" type="button"  href="{base}/training">Train a model</a> 	
+				{/if}
+				
+
+
+			
+			</div>
+		</div>
+
+	
+
+		<div id="about" class="row p-2 mb-5 mt-5">
+			<div class="col-md-7">
+				<h3><span class="text-muted">What is federated learning ?</span></h3>
+				<p class="lead">Donec ullamcorper nulla non metus auctor fringilla. Vestibulum id ligula porta felis euismod semper. Praesent commodo cursus magna, vel scelerisque nisl consectetur. Fusce dapibus, tellus ac cursus commodo.</p>
+			</div>
+			<div class="col-md-5">
+				<img class=" img-fluid mx-auto" data-src="holder.js/500x500/auto" alt="500x500" style="width: 500px; height: 500px;" src="data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22500%22%20height%3D%22500%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20500%20500%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_198e870756e%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A25pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_198e870756e%22%3E%3Crect%20width%3D%22500%22%20height%3D%22500%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22183.13333129882812%22%20y%3D%22261.7%22%3E500x500%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E" data-holder-rendered="true">
+			</div>
+		</div>
+	
+
+		<div class="row mt-2 p-2">
+			<div class="col-md-7 order-md-2">
+				<h2 class=""><span class="text-muted">Introducing {$systemSettings.meta.name}</span></h2>
+				<p class="lead">Donec ullamcorper nulla non metus auctor fringilla. Vestibulum id ligula porta felis euismod semper. Praesent commodo cursus magna, vel scelerisque nisl consectetur. Fusce dapibus, tellus ac cursus commodo.</p>
+			</div>
+			<div class="col-md-5 order-md-1">
+				<img class="featurette-image img-fluid mx-auto" data-src="holder.js/500x500/auto" alt="500x500" style="width: 500px; height: 500px;" src="data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22500%22%20height%3D%22500%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20500%20500%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_198e870756f%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A25pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_198e870756f%22%3E%3Crect%20width%3D%22500%22%20height%3D%22500%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22183.13333129882812%22%20y%3D%22261.7%22%3E500x500%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E" data-holder-rendered="true">
 			</div>
 		</div>
 
@@ -131,64 +219,19 @@
 
 
 
-	
-    <div class="container px-2 py-2" id="feature1-grid">
-			<h3 class="pb-2 border-bot1tom">Model Library</h3>
-      <!-- <h4 class="text-body-emphasis">Centered screenshot</h4> -->
-			<div class="col-lg-12 mx-auto">
-				<!-- <p class="lead mb-4">
-					Quickly design and customize responsive mobile-first sites with Bootstrap, the world’s
-					most popular front-end open source toolkit, featuring Sass variables and mixins,
-					responsive grid system, extensive prebuilt components, and powerful JavaScript plugins.
-				</p> -->
 
-				{#if loaded}
-				{#each Object.keys(custom_models) as proj}
-				{#if custom_models[proj].list}
-				<div class="card mt-3 pt-1">
-					<div class="card-body">
-						<h4 class="card-title">{custom_models[proj].title}</h4>
-						<p class="card-text fs-5">
-							{custom_models[proj].description} <br />
-						</p>
-						<ul>
-							<li><b>Source: </b> {custom_models[proj].source}</li>
-							<li>
-								<b>Website: </b>
-								<a target="_blank" href={custom_models[proj].website}
-									>{custom_models[proj].website}</a
-								>
-							</li>
-							<li><b>Input: </b> {custom_models[proj].model_input}</li>
-							<li><b>Output: </b>{custom_models[proj].model_output}</li>
-						</ul>
-					</div>
-					<ul class="list-group list-group-flush">
-						{#each Object.keys(custom_models[proj]['models']) as model}
-							<li class="list-group-item">
-								<div class="d-flex">
-									<div class="p-2"><code>{proj + '-' + model}</code> :</div>
-									<div class="p-2 flex-grow-1">
-										{custom_models[proj]['models'][model].title}
-									</div>
-									<div class="p-2">
-										<a class="btn btn-link" href={base+"/inference/"+proj+"."+model}>Use</a>
-									</div>
-								</div>
-							</li>
-						{/each}
-					</ul>
-				</div>		
-				{/if}
-			
-			{/each}
-				{/if}
-		
-			</div>
-    
-			
-			
-		</div>
+<!-- Contact Section -->
+<section id="contact" class=" py-4">
+	<div class="container text-center">
+		<h3>Get in Touch</h3>
+		<p class="text-muted">Have questions or want to contribute? Reach out to us!</p>
+		<a href="mailto:{$systemSettings.contact.email}" class="btn btn-primary">Contact Us</a>
+	</div>
+</section>
 
+		<!-- Footer -->
+		<footer class="text-center py-3">
+			<p class="mb-0">&copy; 2025</p>
+		</footer>
 	</div>
 </div>

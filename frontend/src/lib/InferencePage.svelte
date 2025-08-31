@@ -1,10 +1,10 @@
 <script>
 	let { modelName } = $props();
 	import { onMount } from 'svelte';
-	import Input from './_Input.svelte';
+	import Input from './utils/_Input.svelte';
 	import { Library } from 'dlonwebjs';
-	import InferenceTask from './_InferenceTask.svelte';
-	import Output from './_Output.svelte';
+	import InferenceTask from './utils/_InferenceTask.svelte';
+	import Output from './utils/_Output.svelte';
 	import { translations } from '$lib/utils/store.js';
 
 	import { beforeNavigate } from '$app/navigation';
