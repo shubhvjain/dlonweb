@@ -264,11 +264,11 @@
 			}
 			let testdata = new Data(adaptor, filesArray, input_options);
 			await testdata.load();
-			console.log('data loaded');
-			console.log(testdata);
+			//console.log('data loaded');
+			//console.log(testdata);
 
 			let model_details = await Library.get_model_options(selected_model);
-			console.log(model_details);
+			//console.log(model_details);
 
 			await testdata.create_tensors(selected_model, model_details);
 			console.log(testdata);

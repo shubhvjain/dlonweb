@@ -18,7 +18,7 @@ async function imagesToVideo(images, options = { fps: 10, name: 'output.mp4' }) 
 	const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm';
 	const ffmpeg = new FFmpeg();
 
-	ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message));
+	//ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message));
 	await ffmpeg.load({
 		coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
 		wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -409,12 +409,12 @@ export const adaptor = {
 			}
 
 			const isVideo = input_type == "video" ; // you store video as array of frame Files
-			console.log()
+			//console.log()
 			const inputs = rawinput 
 
 			// Normalize predicted_results → array of mask tensors (one per frame/image)
 			const masks = predicted_results;
-			console.log(masks)
+			//console.log(masks)
 			if (inputs.length !== masks.length) {
 				throw new Error(
 					`Input/Mask length mismatch: ${inputs.length} inputs vs ${masks.length} masks`
@@ -430,7 +430,7 @@ export const adaptor = {
 				// if (!(maskT instanceof tf.Tensor)) {
 				// 	throw new Error(`Expected tf.Tensor for mask at index ${i}`);
 				// }
-				console.log(maskT)
+				//console.log(maskT)
 
 				const png =
 					output_type === 'mask'

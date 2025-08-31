@@ -456,7 +456,7 @@ export class InferenceTask {
         //console.log(objectsList)
         const overlay_input_output = Array.isArray(overlay_input) ? overlay_input[0] :  overlay_input
 
-        console.log(overlay_input_output)
+        //console.log(overlay_input_output)
         items.push({
           key,
           type: entry.type,

@@ -14,7 +14,7 @@
 	let key_selected = $state("");
 	let loaded_selected= $state(false)
 	let preview_item = $state()
-	let selected_type = $state()
+	let selected_type = $state("raw_file")
 	onMount(async () => {
 		if (output) {
 			console.log(output);
@@ -24,7 +24,9 @@
 			details.files = output['input_data_obj']['filelist'].length;
 			preview_data = await output.generate_outputs()
 			console.log(preview_data)
+
 			loaded = true;
+			select_item(preview_data.item_name_list[0]["name"])
 		}
 	});
 
@@ -71,19 +73,32 @@
 
 
 	
-		if(!  Object.keys(valid_downloads).includes(preview_data.output_type)   [selected_type]){
-			throw new Error("Invalid selection")
-		}
+		// if(!  Object.keys(valid_downloads).includes(preview_data.output_type)   [selected_type]){
+		// 	throw new Error("Invalid selection")
+		// }
 
+
+		console.log(selected_type)
 
 		const zip = new JSZip();
-		let files = preview_data.downloads[selected_type]
+		let files = preview_data.items // downloads[selected_type]
 		//console.log(files)
 		  // Add files to the zip
 			for (let file of files) {
+				console.log(file)
+				let f = file[selected_type]
+				console.log()
+				if (Array.isArray(f)){
+					f.map(itm=>{
+						zip.file(itm.name,itm);
+					})
+				}else{
+					zip.file(f.name,f);
+				}
+				
 				//console.log(typeof file)
     //const data = await file.arrayBuffer(); // read file
-    zip.file(file.name,file);
+   
   }
 
   // Generate the zip
@@ -164,16 +179,16 @@
 
 					<select id="export-options" class="form-select form-select-sm w-auto me-2" bind:value={selected_type}>
 						{#if output['model_meta']['type'] == 'object_detection'}
-							<option value="bbox_images">Labelled Images (ZIP)</option>
+							<option value="bbox_image">Labelled Images (ZIP)</option>
 							<!-- <option value="labels_json">Object Labels (JSON)</option> -->
 							<option value="crops">Cropped Objects (ZIP)</option>
 						{/if}
 						{#if output['model_meta']['type'] == 'segment_image'}
-							<option value="mask_files">Mask Files (ZIP)</option>
-							<option value="overlay_files">Masks Overlaid on Originals (ZIP)</option>
-							<option value="mask_arrays">Raw Mask Arrays (JSON)</option>
+							<option value="mask">Mask Files (ZIP)</option>
+							<option value="overlay">Masks Overlaid on Originals (ZIP)</option>
+							<!-- <option value="mask_arrays">Raw Mask Arrays (JSON)</option> -->
 						{/if}
-						<option value="raw_files"> Original files (Zip) </option>
+						<option value="raw_file"> Original files (Zip) </option>
 						<!-- <option value="summary_report">Summary Report (JSON)</option> -->
 					</select>
 
