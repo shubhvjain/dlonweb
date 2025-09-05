@@ -8,14 +8,13 @@
 	import Dropzone from 'svelte-file-dropzone';
 	import JSZip from 'jszip';
 	import axios from 'axios';
-	import Preview from './_Preview.svelte';
+	// import Preview from './_Preview.svelte';
 	import { onMount } from 'svelte';
 	import { Data } from 'dlonwebjs';
 	import { input } from '@tensorflow/tfjs';
 
 	import { translations, userSettings } from '$lib/utils/store.js';
 
-	import DataPreview  from "$lib/utils/_InputPreview.svelte"
 	//let file = $state(null);
 	
 	let fps = $state(10); // default FPS for videos
@@ -233,7 +232,8 @@
 </script>
 <div>
 	<Dropzone containerClasses="dropzone11" on:drop={handleFileChange} multiple={true}>
-		<p>Drag & drop files or a .zip folder</p>
+
+		<p>{$translations.input_dd}</p>
 	</Dropzone>
 
 
@@ -253,20 +253,14 @@
 		</div>
 	{/if}
 	</div>
-  <!-- <div class="p-2 flex-fill">
-		{#if data_valid}
-		<DataPreview  {data}/>
-		{/if}
-	</div> -->
-
 </div>
 
 	{#if hasVideo}
-	<h6 class="text-secondary">Additional option for processing videos</h6>
+	<h6 class="text-secondary">{$translations.input_options}</h6>
 
 <div class="input-group flex-nowrap">
 
-  <span class="input-group-text" id="addon-wrapping">Frames per second (FPS)</span>
+  <span class="input-group-text" id="addon-wrapping"> {$translations.video_fps} </span>
   <input class="form-control" type="number" min="1" max="60" bind:value={fps} aria-label="Username" aria-describedby="addon-wrapping">
 </div>
 	{/if}

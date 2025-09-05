@@ -25,9 +25,9 @@
   "no_model":"Please select a model before running",
   "run":"Run",
   "pipeline_invalid":"Something is wrong with the data or model",
-  "pipeline1":"Starting...",
-  "pipeline2":"Loading your data...",
-  "pipeline3":"Working...",
+  "pipeline1":"Starting.",
+  "pipeline2":"Loading your data",
+  "pipeline3":"Working",
   "pipeline4":"Done!",
   "website":"View website",
   "model_input":"Input",
@@ -35,5 +35,23 @@
   "use_model":"Use model",
   "model_output_image_segmentation":"Image segmentation",
   "model_output_bounding_boxes":"Objects in an image",
-  "model_example":"Examples"
+  "model_example":"Examples",
+  
+  "input_options":"Additional option for processing videos",
+  "video_fps":"Frames per second (FPS)",
+  "input_dd":"Drag & drop files or a .zip folder",
+  "export_btn":"Export",
+
+  "output_label1":"Select an element on the left.",
+  "output_label2":"Objects overlay",
+  "output_label3":"No overlay image.",
+  "output_label4":"Objects",
+  "output_label41":"No objects found",
+  "output_label5":"Cropped images ",
+  "output_label6":"No crops available.",
+  "output_label7":"Segmentation mask",
+  "output_label8":"No segmentation masks.",
+  "output_label9":"Image overlay mask",
+  "output_label10":"No overlay masks."
+
 }

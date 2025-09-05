@@ -8,17 +8,17 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 // --------------------------------------------
 // FFmpeg helper (images[] -> MP4)
 // --------------------------------------------
-async function imagesToVideo(images, options = { fps: 10, name: 'output.mp4' }) {
+async function imagesToVideo(images, options = { fps: 10, name: 'output.mp4',output_type:"original" }) {
 	if (!crossOriginIsolated) {
 		throw new Error(
 			'Video cannot be processed on your browser (crossOriginIsolation required). Try Node.js.'
 		);
 	}
 
+	//const baseURL = `${base}/ffmpeg` //'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm';
 	const baseURL = 'https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm';
-	const ffmpeg = new FFmpeg();
 
-	//ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message));
+	const ffmpeg = new FFmpeg();
 	await ffmpeg.load({
 		coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
 		wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -53,7 +53,9 @@ async function imagesToVideo(images, options = { fps: 10, name: 'output.mp4' }) 
 
 	const data = await ffmpeg.readFile('out.mp4');
 	const blob = new Blob([data.buffer], { type: 'video/mp4' });
-	return new File([blob], options.name || 'output.mp4', {
+	const base = (options?.name || 'video').replace(/\.[^.]+$/, '');
+  const output_name  =  `${base}_${options?.output_type||"original"}.mp4`
+	return new File([blob], output_name, {
 		type: 'video/mp4',
 		lastModified: Date.now()
 	});

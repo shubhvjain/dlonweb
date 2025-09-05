@@ -35,5 +35,21 @@
   "use_model": "Modell verwenden",
   "model_output_image_segmentation": "Bildsegmentierung",
   "model_output_bounding_boxes": "Objekte in einem Bild",
-  "model_example":"Beispiele"
+  "model_example":"Beispiele",
+  "input_options":"Zusätzliche Option zur Videobearbeitung",
+  "video_fps":"Bilder pro Sekunde (FPS)",
+  "input_dd": "Dateien oder einen .zip-Ordner per Drag & Drop hierher ziehen",
+  "export_btn":"Exportieren",
+
+  "output_label1":"Bitte links ein Element auswählen.",
+  "output_label2":"Objektüberlagerung",
+  "output_label3":"Keine Überlagerungsbilder",
+  "output_label4":"Objekte",
+  "output_label41":"Keine Objekte erkannt",
+  "output_label5":"Zugeschnittene Bilder ",
+  "output_label6":"Keine Zuschnitte verfügbar.",
+  "output_label7":"Segmentierungsmaske",
+  "output_label8":"Keine Segmentierungsmaske. ",
+  "output_label9":"Bild-Overlay-Maske",
+  "output_label10":"Keine Overlay-Masken."
 }

@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import Preview from './_Preview.svelte';
+	// import Preview from './_Preview.svelte';
 	let { output } = $props();
 	let details = $state({ files: 0, time: 0 });
 	let loaded = $state(false);
@@ -8,13 +8,13 @@
 	import JSZip from 'jszip';
 
 	import PreviewRenderer from './_PreviewRenderer.svelte';
-
-	let preview_data = $state({})
+	import Loading from './_Loading.svelte';
+	let preview_data = $state({});
 	let show_loader = $state(false);
-	let key_selected = $state("");
-	let loaded_selected= $state(false)
-	let preview_item = $state()
-	let selected_type = $state("raw_file")
+	let key_selected = $state('');
+	let loaded_selected = $state(false);
+	let preview_item = $state();
+	let selected_type = $state('raw_file');
 	onMount(async () => {
 		if (output) {
 			console.log(output);
@@ -22,103 +22,95 @@
 				Object.values(output['run_times']).reduce((a, b) => a + b, 0) / 1000
 			);
 			details.files = output['input_data_obj']['filelist'].length;
-			preview_data = await output.generate_outputs()
-			console.log(preview_data)
-
+			preview_data = await output.generate_outputs();
+			console.log(preview_data);
 			loaded = true;
-			select_item(preview_data.item_name_list[0]["name"])
+			if(preview_data.item_name_list.length>0){
+				select_item(preview_data.item_name_list[0]['name']);
+			}
 		}
 	});
 
-	
-	const select_item= (key)=>{
-		console.log(key)
-		loaded_selected = false
-		preview_item = preview_data.items.find(it=>{return it.key==key})
-		key_selected = key
-		console.log(preview_item)
-		loaded_selected = true
-	}
+	const select_item = (key) => {
+		console.log(key);
+		loaded_selected = false;
+		preview_item = preview_data.items.find((it) => {
+			return it.key == key;
+		});
+		key_selected = key;
+		console.log(preview_item);
+		setTimeout(()=>{},100)
+		loaded_selected = true;
+	};
 
-
-  // track created Object URLs for cleanup
-  const urls = new Set();
-  const makeURL = (fileOrBlob) => {
-		console.log(fileOrBlob)
-    if (!fileOrBlob) return "";
-    const u = URL.createObjectURL(fileOrBlob);
-    urls.add(u);
-    return u;
-  };
-  const cleanupURLs = () => {
-    urls.forEach((u) => URL.revokeObjectURL(u));
-    urls.clear();
-  };
+	// track created Object URLs for cleanup
+	const urls = new Set();
+	const makeURL = (fileOrBlob) => {
+		console.log(fileOrBlob);
+		if (!fileOrBlob) return '';
+		const u = URL.createObjectURL(fileOrBlob);
+		urls.add(u);
+		return u;
+	};
+	const cleanupURLs = () => {
+		urls.forEach((u) => URL.revokeObjectURL(u));
+		urls.clear();
+	};
 
 	const iconForType = (t) => {
-    if (!t) return "📎";
-    if (t.startsWith("image")) return "🖼️";
-    if (t.startsWith("video")) return "🎥";
-    if (t.startsWith("text")) return "📄";
-    return "📎";
-  };
-
+		if (!t) return '📎';
+		if (t.startsWith('image')) return '🖼️';
+		if (t.startsWith('video')) return '🎥';
+		if (t.startsWith('text')) return '📄';
+		return '📎';
+	};
 
 	let valid_downloads = {
-			"segment_image":["raw_file","mask","overlay"],
-			"object_detection":["raw_file","bbox_image","crops","objects"]
-		}
+		segment_image: ['raw_file', 'mask', 'overlay'],
+		object_detection: ['raw_file', 'bbox_image', 'crops', 'objects']
+	};
 
-	async function  download() {
-
-
-	
+	async function download() {
 		// if(!  Object.keys(valid_downloads).includes(preview_data.output_type)   [selected_type]){
 		// 	throw new Error("Invalid selection")
 		// }
 
-
-		console.log(selected_type)
+		console.log(selected_type);
 
 		const zip = new JSZip();
-		let files = preview_data.items // downloads[selected_type]
+		let files = preview_data.items; // downloads[selected_type]
 		//console.log(files)
-		  // Add files to the zip
-			for (let file of files) {
-				console.log(file)
-				let f = file[selected_type]
-				console.log()
-				if (Array.isArray(f)){
-					f.map(itm=>{
-						zip.file(itm.name,itm);
-					})
-				}else{
-					zip.file(f.name,f);
+		// Add files to the zip
+		for (let file of files) {
+			//console.log(file);
+			let f = file[selected_type];
+			if (Array.isArray(f)) {
+				for (let itm of f) {
+					await zip.file(`itm.name`, itm);
 				}
-				
-				//console.log(typeof file)
-    //const data = await file.arrayBuffer(); // read file
-   
-  }
+			} else {
+				await zip.file(f.name, f);
+			}
 
-  // Generate the zip
-  const content = await zip.generateAsync({ type: "blob" });
+			//console.log(typeof file)
+			//const data = await file.arrayBuffer(); // read file
+		}
+		// Generate the zip
+		const content = await zip.generateAsync({ type: 'blob' });
 
-  // Create a download link
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(content);
-  a.download = "files.zip";
-  a.click();
-  URL.revokeObjectURL(a.href); // cleanup
-  }
-
-
+		// Create a download link
+		const a = document.createElement('a');
+		a.href = URL.createObjectURL(content);
+		a.download = `${output.model_name}_${selected_type}_files.zip`
+		a.click();
+		URL.revokeObjectURL(a.href); // cleanup
+	}
 </script>
 
 <!-- <Preview  input={output} /> -->
 
-{#if loaded}
-	<div class="card">
+<div class="card">
+	{#if loaded}
 		<div class="card-header d-flex">
 			<div class="flex-grow-1">{output.name}</div>
 
@@ -175,9 +167,13 @@
 		<div class="card-body">
 			<div class="card-text">
 				<div class="d-flex justify-content-end align-items-center mb-3">
-					<label for="export-options" class="me-2 mb-0">Export Results</label>
+					<label for="export-options" class="me-2 mb-0"> {$translations.export_btn} </label>
 
-					<select id="export-options" class="form-select form-select-sm w-auto me-2" bind:value={selected_type}>
+					<select
+						id="export-options"
+						class="form-select form-select-sm w-auto me-2"
+						bind:value={selected_type}
+					>
 						{#if output['model_meta']['type'] == 'object_detection'}
 							<option value="bbox_image">Labelled Images (ZIP)</option>
 							<!-- <option value="labels_json">Object Labels (JSON)</option> -->
@@ -214,162 +210,135 @@
 			</div>
 
 			<details>
-				<summary>  <h5 class="card-title d-inline">File preview</h5> </summary>
-
+				<summary> <h5 class="card-title d-inline">File preview</h5> </summary>
 
 				<!-- Split layout -->
-<div class="row g-0 border rounded overflow-hidden" style="min-height: 70vh;">
-  <!-- Left: files -->
-  <div class="col-12 col-md-4 border-end">
-		<div class="list-group list-group-flush">
-			{#each preview_data.item_name_list as k}
-				
-				<button
-					type="button"
-					class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {key_selected === k.name ? 'active' : ''}"
-					title={k.name}
-					onclick={() => select_item(k.name)}
-				>
-					<div class="d-flex align-items-center gap-2 text-truncate">
-						
-						<span class="text-truncate" style="max-width: 200px;"> {iconForType(k.type)} {k.name}</span>
-					</div>
-					
-				</button>
-			{/each}
-		</div>
-  </div>
-
-  <!-- Right: preview -->
-  <div class="col-12 col-md-8">
-    <div class="p-3">
-      {#if !key_selected}
-        <div class="text-muted">Select an image on the left.</div>
-      {:else}
-				{#if loaded_selected}
-
-				 <!-- Original -->
-				 <h5 class="mb-3"><i class="bi bi-image me-2"></i>Original</h5>
-				
-				 <PreviewRenderer type={preview_item.type} data={preview_item.raw_file} />
-
-					{#if preview_data.output_type=="object_detection" }
-						
-					    <!-- Boxes -->
-							<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Objects overlay</h5>
-							{#if preview_item?.bbox_image}
-							
-									
-								<PreviewRenderer type={preview_item.type} data={preview_item.bbox_image} />
-
-
-							{:else}
-								<div class="text-muted mb-3">No overlay image.</div>
-							{/if}
-			
-							<!-- Objects list -->
-							<h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>Objects</h5>
-							{#if preview_item?.objects?.length}
-								<ul class="list-group mb-3">
-									{#each preview_item.objects as obj, i}
-										<li class="list-group-item d-flex justify-content-between align-items-center">
-											<div>
-												<span class="fw-semibold">{obj.class || 'object'}</span>
-												{#if obj.score != null}
-													<span class="text-muted ms-2">({(obj.score * 100).toFixed(1)}%)</span>
-												{/if}
-												{#if obj.bbox}
-													<small class="text-muted ms-2">
-														[x:{obj.bbox[0] | 0}, y:{obj.bbox[1] | 0}, w:{obj.bbox[2] | 0}, h:{obj.bbox[3] | 0}]
-													</small>
-												{/if}
-											</div>
-											<span class="badge bg-light text-dark">#{i + 1}</span>
-										</li>
-									{/each}
-								</ul>
-							{:else}
-								<div class="text-muted mb-3">No objects detected.</div>
-							{/if}
-			
-							<!-- Crops -->
-							<details class="mb-2">
-								<summary class="h6 mb-2"><i class="bi bi-scissors me-2"></i>Cropped images {#if preview_item?.crops?.length}<span class="badge bg-secondary ms-2">{preview_item.crops.length}</span>{/if}</summary>
-								{#if preview_item?.crops?.length}
-									<div class="row g-2">
-										{#each preview_item.crops as c, idx}
-											<div class="col-6 col-lg-4">
-												<PreviewRenderer type={preview_item.type} data={c} />
-												<div class="small text-truncate mt-1">{c.name}</div>
-											</div>
-										{/each}
+				<div class="row g-0 border rounded overflow-hidden" style="min-height: 70vh;">
+					<!-- Left: files -->
+					<div class="col-12 col-md-4 border-end">
+						<div class="list-group list-group-flush">
+							{#each preview_data.item_name_list as k}
+								<button
+									type="button"
+									class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {key_selected ===
+									k.name
+										? 'active'
+										: ''}"
+									title={k.name}
+									onclick={() => select_item(k.name)}
+								>
+									<div class="d-flex align-items-center gap-2 text-truncate">
+										<span class="text-truncate" style="max-width: 200px;">
+											{iconForType(k.type)} {k.name}</span
+										>
 									</div>
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Right: preview -->
+					<div class="col-12 col-md-8">
+						<div class="p-3">
+							{#if !key_selected}
+								<div class="text-muted"> {$translations.output_label1} </div>
+							{:else}
+								{#if loaded_selected}
+									<!-- Original -->
+									<h5 class="mb-3"><i class="bi bi-image me-2"></i>Original</h5>
+
+									<PreviewRenderer type={preview_item.type} data={preview_item.raw_file} />
+
+									{#if preview_data.output_type == 'object_detection'}
+										<!-- Boxes -->
+										<h5 class="mb-3">
+											<i class="bi bi-bounding-box-circles me-2"></i> {$translations.output_label2} 
+										</h5>
+										{#if preview_item?.bbox_image}
+											<PreviewRenderer type={preview_item.type} data={preview_item.bbox_image} />
+										{:else}
+											<div class="text-muted mb-3">  {$translations.output_label3}  </div>
+										{/if}
+
+										<!-- Objects list -->
+										<h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>  {$translations.output_label4}  </h5>
+										{#if preview_item?.objects?.length}
+											<ul class="list-group mb-3">
+												{#each preview_item.objects as obj, i}
+													<li
+														class="list-group-item d-flex justify-content-between align-items-center"
+													>
+														<div>
+															<span class="fw-semibold">{obj.class || 'object'}</span>
+															{#if obj.score != null}
+																<span class="text-muted ms-2"
+																	>({(obj.score * 100).toFixed(1)}%)</span
+																>
+															{/if}
+															{#if obj.bbox}
+																<small class="text-muted ms-2">
+																	[x:{obj.bbox[0] | 0}, y:{obj.bbox[1] | 0}, w:{obj.bbox[2] | 0}, h:{obj
+																		.bbox[3] | 0}]
+																</small>
+															{/if}
+														</div>
+														<span class="badge bg-light text-dark">#{i + 1}</span>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<div class="text-muted mb-3"> {$translations.output_label41}  </div>
+										{/if}
+
+										<!-- Crops -->
+										<details class="mb-2">
+											<summary class="h6 mb-2"
+												><i class="bi bi-scissors me-2"></i>  {$translations.output_label5}  {#if preview_item?.crops?.length}<span
+														class="badge bg-secondary ms-2">{preview_item.crops.length}</span
+													>{/if}</summary
+											>
+											{#if preview_item?.crops?.length}
+												<div class="row g-2">
+													{#each preview_item.crops as c, idx}
+														<div class="col-6 col-lg-4">
+															<PreviewRenderer type={preview_item.type} data={c} />
+															<div class="small text-truncate mt-1">{c.name}</div>
+														</div>
+													{/each}
+												</div>
+											{:else}
+												<div class="text-muted">  {$translations.output_label6} </div>
+											{/if}
+										</details>
+									{:else if preview_data.output_type == 'segment_image'}
+										<h5 class="mb-3">
+											<i class="bi bi-bounding-box-circles me-2"></i>   {$translations.output_label7}  
+										</h5>
+										{#if preview_item?.mask}
+											<PreviewRenderer type={preview_item.type} data={preview_item.mask} />
+										{:else}
+											<div class="text-muted mb-3">   {$translations.output_label8} </div>
+										{/if}
+
+										<h5 class="mb-3">
+											<i class="bi bi-bounding-box-circles me-2"></i>  {$translations.output_label9} 
+										</h5>
+										{#if preview_item?.overlay}
+											<PreviewRenderer type={preview_item.type} data={preview_item.overlay} />
+										{:else}
+											<div class="text-muted mb-3">   {$translations.output_label9} </div>
+										{/if}
+									{/if}
 								{:else}
-									<div class="text-muted">No crops available.</div>
+									<div class="text-muted">Loadings ...</div>
 								{/if}
-							</details>
-					{:else if preview_data.output_type=="segment_image"}
-
-					<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Segmentation mask</h5>
-					{#if preview_item?.mask}
-						<PreviewRenderer type={preview_item.type} data={preview_item.mask} />
-					{:else}
-						<div class="text-muted mb-3">No segmentation masks.</div>
-					{/if}
-
-
-					<h5 class="mb-3"><i class="bi bi-bounding-box-circles me-2"></i>Image overlay mask</h5>
-					{#if preview_item?.overlay}
-						<PreviewRenderer type={preview_item.type} data={preview_item.overlay} />
-					{:else}
-						<div class="text-muted mb-3">No overlay masks.</div>
-					{/if}
-
-					{/if}
-
-
-
-					  
-		 
-
-
-
-
-						
-
-
-
-
-				{:else}
-				<div class="text-muted"> Loadings ... </div>
-				{/if}
-<!--       
-				items.push({
-          key,
-          raw_file: rawFile,
-          bbox_image: bboxImage,
-          crops: cropsForImage,
-          objects: objectsForImage,
-        });
-      }
-
-      return {
-        item_name_list,
-        items,
-        output_type:"object_detection"
-      }; -->
-     
-     
-
-  
-      {/if}
-    </div>
-  </div>
-</div>
-
-
-
+							{/if}
+						</div>
+					</div>
+				</div>
 			</details>
 		</div>
-	</div>
-{/if}
+	{:else}
+		<Loading message="Generating preview. Please wait." />
+	{/if}
+</div>

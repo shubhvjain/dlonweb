@@ -23,18 +23,15 @@ const load_media = async()=>{
     }
     loaded = true
 }
-
-  onMount(async () => {
-  load_media()
-  });
+  onMount(async () => {load_media()})
 </script>
 {#if loaded}
-<div class="preview-container text-center p-2">
+<div class=" text-center p-2">
   {#if type === "image" && url}
     <img src={url} class="img-fluid border rounded shadow-sm" alt="Preview" />
   
   {:else if type === "video" && url}
-    <video controls class="w-100 border rounded shadow-sm">
+    <video controls class="border rounded shadow-sm">
       <source src={url} type="video/mp4" />
       <source src={url} type="video/webm" />
       Your browser does not support the video tag.

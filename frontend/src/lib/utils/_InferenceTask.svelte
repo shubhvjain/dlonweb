@@ -9,6 +9,7 @@
 
 	import { filesStore } from '$lib/utils/filesStorage';
 	import { get } from 'svelte/store';
+	import Loading from './_Loading.svelte';
 
 	/**
 	 * The Component inputs  includes :
@@ -323,7 +324,7 @@
 			{/if}
 		</div>
 
-		<div class="p-1 mb-2 border-top pt-4">
+		<div class="p-1 mb-2 pt-4">
 			<h5 class="card-title">2. {$translations.upload_data}</h5>
 			<Input data_emit={on_input_valid} />
 		</div>
@@ -352,12 +353,16 @@
 		{/if}
 
 		<!-- <hr> -->
-		<div class="d-flex align-items-center p-1 border-top pt-2">
+		<div class="d-flex align-items-center p-1 pt-2">
 			<!-- Left section: Error / Progress / Status -->
 			<div class="flex-grow-1 me-3">
 				{#if status.text}
-					<div class="text-{status.type} mb-2">{status.text}</div>
-				{/if}
+					{#if task_running}
+						<Loading message={status.text}/>
+						{:else}
+						<div class="text-{status.type} mb-2">{status.text}</div>
+					{/if}
+					{/if}
 
 				{#if task_running && progress.percent > 0}
 					<div aria-live="polite" style="margin-top: .5rem;">

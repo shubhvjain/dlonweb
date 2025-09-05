@@ -408,7 +408,6 @@ export class InferenceTask {
     else if (task_type == "segment_image"){
       let item_name_list = []
       const items = [];
-     
       for (const key of this.input_data_obj.filelist) {
         const entry = this.input_data_obj.get_item(key);
 
@@ -437,7 +436,7 @@ export class InferenceTask {
           inputs,
           detectionsPerInput,
           "mask",
-          this.input_data_obj.options,
+          {...this.input_data_obj.options,name:key,output_type:"mask"},
           entry.type
         );
         //console.log(objectsList)
@@ -450,7 +449,7 @@ export class InferenceTask {
           inputs,
           detectionsPerInput,
           "overlay",
-          this.input_data_obj.options,
+          {...this.input_data_obj.options,name:key,output_type:"overlay"},
           entry.type
         );
         //console.log(objectsList)
@@ -465,7 +464,7 @@ export class InferenceTask {
           overlay: overlay_input_output,
         });
       }
-
+      //console.log(items)
       return {
         item_name_list,
         items,
