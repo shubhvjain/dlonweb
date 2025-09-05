@@ -8,18 +8,25 @@
 	let loaded = $state(false);
   const load_page = ()=>{
     try {
-      console.log("loading +page....")
+      //console.log("loading +page....")
       loaded = false
       modelName = data.modelName
-		  console.log('Loaded model:', modelName);
+		  //console.log('Loaded model:', modelName);
       if(modelName){
-        loaded = true;   
+        setTimeout(()=>{
+          loaded = true;   
+        },5)
       }
     } catch (error) {
       console.log(error) 
       loaded = false
     }
   }
+
+  $effect(()=>{
+    load_page()
+  })
+
 	onMount(async () => {
    load_page()
 	});

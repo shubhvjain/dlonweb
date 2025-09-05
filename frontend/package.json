@@ -34,6 +34,7 @@
 		"bootstrap": "^5.3.6",
 		"dlonwebjs": "file:../package",
 		"geotiff": "^2.1.3",
+		"jszip": "^3.10.1",
 		"marked": "^16.0.0",
 		"svelte-file-dropzone": "^2.0.9"
 	}

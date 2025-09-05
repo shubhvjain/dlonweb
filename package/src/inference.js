@@ -1,169 +1,478 @@
 import { Data } from "./data.js";
 import { Library } from "./models.js";
 
+/**
+ * InferenceTask
+ * -------------
+ * Handles model loading, preparing Data, and running inference
+ * in either main thread or a web worker.
+ */
 export class InferenceTask {
   /**
    * @param {Object} options
-   * @param {Object} options.env - env object with tf, decode helpers
-   * @param {string} options.model - either "custom" or a library model key (like "coco-ssd")
-   * @param {string|Object} [options.modelFiles] - if custom, path or model files (JSON + weights)
-   * @param {string} [options.modelName] - optional, for library model key (e.g., "tf.coco-ssd")
+   * @param {Object} options.env - environment object with tf and helpers
+   * @param {string} options.model_name - model identifier
+   * @param {string|Object} [options.model_files] - path or object for custom model
+   * @param {Object} [options.model_meta] - model metadata
+   * @param {Object} [options.worker] - optional web worker
+   * @param {"main_thread"|"web_worker"} [options.run_mode="main_thread"]
    */
-  constructor({ env, modelFiles, modelName, modelMeta, environment }) {
+  constructor({
+    env,
+    model_name,
+    model_files = null,
+    model_meta = null,
+    worker = null,
+    run_mode = "main_thread",
+    name = null,
+  }) {
     if (!env || !env.tf) throw new Error("env with tf required");
-    if (!modelName) throw new Error("modelName is required");
-    this.environment = environment || "unknown";
+    if (!model_name) throw new Error("model_name required");
+
     this.env = env;
     this.tf = env.tf;
-    this.modelFiles = modelFiles || null;
-    this.modelName = modelName || null;
+
+    this.model_name = model_name;
+    this.model_files = model_files;
     this.model = null;
-    this.modelMeta = modelMeta || {
-      model_input: "image",
-      model_input_options: {},
-      model_output: "bounding_boxes",
+    this.model_meta = model_meta;
+
+    this.input_data_obj = null; // instance of Data
+    this.input_data_map = {}; // { key: { tensor } }
+    this.output_data_map = {}; // { key: result }
+    this.run_times = {
+      load_data: 0,
+      run: 0,
+      generate_output: 0,
     };
+    this.worker = worker;
+    this.run_mode = run_mode;
+    this.name = name;
   }
 
-  async loadModel() {
-    if (this.model) return;
+  now_time() {
+    return Date.now();
+  }
 
-    if (this.modelName === "custom") {
-      if (!this.modelFiles) {
-        throw new Error("modelFiles must be provided for custom models");
-      }
-      if (typeof this.modelFiles === "string") {
-        this.model = await this.tf.loadLayersModel(this.modelFiles);
-      } else {
-        this.model = await this.tf.loadLayersModel(this.modelFiles);
-      }
+  /** Load model into memory (main thread only) */
+  async load_model() {
+    if (this.model) return;
+    const stime = this.now_time();
+    if (this.model_name === "custom") {
+      if (!this.model_files)
+        throw new Error("model_files required for custom model");
+      this.model = await this.tf.loadLayersModel(this.model_files);
     } else {
-      // Use Library method for built-in models
-      this.model = await Library.loadModel(this.env, this.modelName);
-      this.modelMeta = await Library.get_model(this.modelName);
+      this.model = await Library.load_model(
+        this.env,
+        this.env.basePath,
+        this.model_name
+      );
+    }
+    const etime = this.now_time();
+    this.run_times.run += etime - stime;
+    console.log("model loaded");
+  }
+
+  async load_model_meta() {
+    if (!this.model_meta) {
+      this.model_meta = await Library.get_model(this.model_name);
     }
   }
+
+  /** Load a Data object, create tensors, and (if worker mode) serialize them */
+  async load_data(data_obj) {
+    if (!data_obj) throw new Error("Data object required");
+    this.input_data_obj = data_obj;
+
+    await this.load_model_meta();
+
+    // 1) create tensors on the main thread
+    let stime = this.now_time();
+    const model_options = Library.get_model_options(
+      this.model_name,
+      this.model
+    );
+    console.log(model_options);
+    await this.input_data_obj.create_tensors(this.model_name, model_options);
+
+    // 2) build input_data_map
+    this.input_data_map = {};
+
+    if (this.run_mode === "web_worker") {
+      this._transferables = [];
+      this.input_data_map = {};
+
+      for (const key of this.input_data_obj.filelist) {
+        const modelEntry =
+          this.input_data_obj.get_item(key).models[this.model_name];
+        const tensors = Array.isArray(modelEntry.tensor)
+          ? modelEntry.tensor
+          : [modelEntry.tensor];
+
+        const serialized = tensors.map((t) => {
+          if (!(t instanceof this.env.tf.Tensor)) {
+            throw new Error("Expected tf.Tensor in worker mode serialization");
+          }
+          const ta = t.dataSync(); // TypedArray view (may have byteOffset!)
+          //  zero-copy with offset/length metadata
+          this._transferables.push(ta.buffer);
+          return {
+            buffer: ta.buffer,
+            byteOffset: ta.byteOffset, // <-- important
+            length: ta.length, // <-- important (elements, not bytes)
+            dtype: t.dtype,
+            shape: t.shape,
+          };
+        });
+
+        this.input_data_map[key] = {
+          input_tensor: serialized,
+          results: modelEntry.results || {},
+          derived: modelEntry.derived || {},
+        };
+      }
+    } else {
+      // main thread mode keeps live tensors
+      for (const key of this.input_data_obj.filelist) {
+        const modelEntry =
+          this.input_data_obj.get_item(key).models[this.model_name];
+        const tensors = Array.isArray(modelEntry.tensor)
+          ? modelEntry.tensor
+          : [modelEntry.tensor];
+
+        this.input_data_map[key] = {
+          tensors, // ALWAYS array of tf.Tensors
+          results: modelEntry.results || {},
+          derived: modelEntry.derived || {},
+        };
+      }
+    }
+    let etime = this.now_time();
+    this.run_times.load_data += etime - stime;
+  }
+
+  task_name_check() {
+    // to add a name to a task if not provided
+    if (!this.name) {
+      let f_len = this.input_data_obj?.filelist.length ?? 0;
+      let model_type = "";
+      switch (this.model_meta.type) {
+        case "segment_image":
+          model_type = "Segmentation";
+          break;
+        case "object_detection":
+          model_type = "Object detection";
+          break;
+        default:
+          model_type = "Inference";
+      }
+      this.name = `${model_type} of ${f_len} file${
+        f_len == "1" ? "" : "s"
+      } using ${this.model_name}`;
+    }
+  }
+
+  /** Run inference */
+  async run_model(progress_callback = null) {
+    if (!this.input_data_obj)
+      throw new Error("Data not loaded. Call load_data() first.");
+
+    this.task_name_check();
+
+    if (this.run_mode === "main_thread") {
+      if (!this.model) await this.load_model();
+      await this._run_model_main_thread(progress_callback);
+    } else if (this.run_mode === "web_worker") {
+      if (!this.worker) throw new Error("Worker not provided");
+      await this._run_model_web_worker(progress_callback);
+    } else {
+      throw new Error(`Unsupported run_mode: ${this.run_mode}`);
+    }
+
+    return this.output_data_map;
+  }
+
+  /** Execute inference on main thread */
+  async _run_model_main_thread(progress_callback) {
+    this.output_data_map = {};
+    let stime = this.now_time();
+    const keys = this.input_data_obj.filelist;
+    const total = keys.length;
+
+    for (let i = 0; i < total; i++) {
+      const key = keys[i];
+
+      // tensors were prepared in load_data() for main thread mode
+      const entry = this.input_data_map[key];
+      if (!entry || !Array.isArray(entry.tensors)) {
+        throw new Error(
+          `No tensors found for key "${key}". Did you call load_data()?`
+        );
+      }
+      const tensors = entry.tensors;
+
+      //console.log(tensors)
+      // run per-tensor
+      const perItemOutputs = [];
+      if (this.model_name === "tf.coco-ssd" && this.model?.detect) {
+        for (const t of tensors) {
+          //console.log(t)
+          const out = await this.model.detect(t);
+          perItemOutputs.push(out);
+        }
+      } else if (this.model?.predict) {
+        for (const t of tensors) {
+          //console.log(t)
+          const out = this.model.predict(t);
+          perItemOutputs.push(out);
+          t.dispose()
+        }
+      } else {
+        throw new Error(`Unsupported model interface for ${this.model_name}`);
+      }
+
+      // store back into Data + output map
+      this.input_data_obj.add_results(key, this.model_name, perItemOutputs);
+      this.output_data_map[key] = perItemOutputs;
+
+      if (progress_callback) {
+        progress_callback(Math.round(((i + 1) / total) * 100));
+      }
+    }
+    let etime = this.now_time();
+    this.run_times.run += etime - stime;
+  }
+
+  /** Execute inference in a web worker */
+  async _run_model_web_worker(progress_callback) {
+    if (!this.worker) throw new Error("Worker not initialized");
+    if (!this.input_data_obj) throw new Error("No data loaded");
+
+    // tensors were serialized in load_data() when run_mode === "web_worker"
+    if (!this.input_data_map || !this._transferables) {
+      throw new Error("Worker input not prepared. Call load_data() first.");
+    }
+
+    return new Promise((resolve, reject) => {
+      const handle_message = (e) => {
+        const { type, percent, output_map, error, run_time } = e.data || {};
+
+        if (type === "progress" && progress_callback) {
+          progress_callback(percent);
+        } else if (type === "done") {
+          this.output_data_map = output_map || {};
+          for (const key of Object.keys(this.output_data_map)){
+            this.input_data_obj.add_results(key, this.model_name,this.output_data_map[key] );
+          }
+          
+          this.worker.removeEventListener("message", handle_message);
+          if (run_time) {
+            this.run_times.run += run_time;
+          }
+          resolve();
+        } else if (type === "error") {
+          this.worker.removeEventListener("message", handle_message);
+          reject(error);
+        }
+      };
+
+      this.worker.addEventListener("message", handle_message);
+
+      // just send what load_data prepared
+      this.worker.postMessage(
+        {
+          type: "run_inference",
+          model_name: this.model_name,
+          model_files: this.model_files,
+          model_meta: this.model_meta,
+          input_map: this.input_data_map, // already serialized arrays
+          basePath: this.env.basePath, // plain string, no functions
+        },
+        this._transferables // the ArrayBuffers gathered in load_data
+      );
+    });
+  }
+
+  // InferenceTask.js (add inside the class)
 
   /**
-   * Run inference on input (Data instance or raw input).
-   * @param {Data|any} input
-   * @param {Object} options passed to Data.load()
-   * @returns {Promise<Data|Data[]>} output wrapped in Data instance(s)
+   * Generate preview/download artifacts after inference.
+   * Image-only, task_type: "object_detection".
+   *
+   * Returns:
+   * {
+   *   items: [
+   *     {
+   *       key,
+   *       raw_file: File,
+   *       bbox_image: File|null,
+   *       crops: File[],              // cropped objects
+   *       objects: Array<{class,score,bbox}> // plain objects list
+   *     }, ...
+   *   ],
+   *   downloads: {
+   *     raw_files: Array<{file: File, name: string}>,
+   *     bbox_images: Array<{file: File, name: string}>,
+   *     crops: Array<{file: File, name: string}>
+   *   },
+   *   summary: { total_files, total_bbox_images, total_crops, total_objects }
+   * }
    */
-  async runInference(input, options = {}) {
-    if (!this.model) await this.loadModel();
+  async generate_outputs() {
+    if (!this.input_data_obj)
+      throw new Error("No Data loaded. Call load_data() first.");
+    let task_type = this.model_meta.type;
 
-    if (!input instanceof Data) {
-      throw new Error("Invalid input type. Must be an instance of Data");
-    }
+    if (task_type == "object_detection") {
+      const items = [];
+    
+     
+      let item_name_list = []
 
-    //const data = input instanceof Data ? input : new Data(input, { env: this.env });
-    //await data.load(options);
+      for (const key of this.input_data_obj.filelist) {
+        const entry = this.input_data_obj.get_item(key);
+        
+        //console.log(entry)
+        // image-only guard
+        if (
+          entry.type != "image" ) {
+          // skip non-image entries for this simple path
+          continue;
+        }
 
-    let tensor_options =  Library.getModelOptions(this.modelName,this.model)
-    //{ ...this.modelMeta?.model_input_options };
-    console.log(tensor_options)
-    const tensorInput = await input.getTensor(tensor_options);
-    console.log(tensorInput)
-    let output;
+        item_name_list.push({name:key,type:entry.type})
+        const rawFile = entry.raw_file;
 
-    // ideally do this before loading the model 
-    if (!this.modelMeta["model_input"].includes(input.kind)) {
-      throw new Error("Unsupported input type for the selected model");
-    }
+        // detections were saved earlier by run_model()
+        const detectionsPerInput =
+          this.input_data_obj.get_results(key, this.model_name) || [];
+        // We only expect one input for image (your Data.load() makes input = [rawFile])
+        const inputs =  entry.input 
 
-    if (this.modelName === "custom") {
-      // Custom tf.LayersModel uses predict()
-      output = this.model.predict(tensorInput);
-    } else if (this.modelName === "tf.coco-ssd") {
-      // If tensorInput is a tensor, pass it directly; otherwise, adapt as needed.
-      output = await this.model.detect(tensorInput);
-      // output needs to be processed to generate Data
-    } else {
-      // For other library models (assumed to be tf.LayersModel)
-      if (input.kind == "image") {
-        output = this.model.predict(tensorInput);
-      }else if (input.kind == "video"){
-        // tensorInput is of the form  [{raw,timestamp,tensor}]
-        // frames = tensorObjects.map(({ raw, timestamp }) => ({
-				// 	url: URL.createObjectURL(raw),
-				// 	timestamp
-				// }));
-        console.log("images generated")
-        output = await Promise.all(
-          tensorInput.map(async frame => {
-            const opt = await this.model.predict(frame.tensor)
-            return { ...frame, output:opt };
-          })
+        // 1) objects list (plain)
+        const objectsList = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "objects"
         );
-        // throw new Error("working on it ")
-      }
-    }
+        //console.log(objectsList)
+        const objectsForImage = Array.isArray(objectsList)
+          ? objectsList[0] || []
+          : [];
+       
 
-    console.log(output);
-    // generate the actual output based on model output
-    if (this.modelMeta["model_output"] == "bounding_boxes") {
-      let transformed_data = await input.transform("add_bounding_boxes", {
-        boxes: output,
-      });
-      let output_image = new Data(transformed_data.file, {
-        environment: this.environment,
-        env: this.env,
-      });
-      await output_image.load(options);
-      return output_image;
-    } else if (this.modelMeta["model_output"] == "image_segmentation") {
-
-      if(input.kind=="image"){
-        let transformed_data = await input.transform("add_segmentation_mask", {
-          mask: output,
-        });
-        let output_image = new Data(transformed_data.file, {
-          environment: this.environment,
-          env: this.env,
-        });
-        await output_image.load(options);
-        return output_image;
-      } else if (input.kind=="video"){
-        let transformed_images = await Promise.all(
-          output.map(async frame => {
-            const segmented_image = await  this.env.imageTransform(frame.raw,"add_segmentation_mask", {
-              mask: frame.output,
-            });
-            return segmented_image.file 
-          })
+        // 2) bounding-box overlay (single image)
+        const bboxImages = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "bounding_boxes"
         );
-        // console.log(transformed_images)
-        //console.log(input.meta)
-
-        let combined_video = await this.env.convertImagesToVideo(transformed_images,input.meta)
-        let output_video = new Data(combined_video, {
-          environment: this.environment,
-          env: this.env,
-          meta: input.meta
-        });
-        await output_video.load(options);
-        return output_video;
-      }
-      else{
-        //console.log(output)
-        return output;
-      }
-
-
+        const bboxImage = Array.isArray(bboxImages)
+          ? bboxImages[0] || null
+          : null;
       
-    }else{
-      return output
-    }
+    
+        // 3) object crops (array of files)
+        const cropLists = await this.env.generate_inference_output(
+          "object_detection",
+          inputs,
+          detectionsPerInput,
+          "crop_objects"
+        );
+        const cropsForImage = Array.isArray(cropLists)
+          ? cropLists[0] || []
+          : [];
+        //cropsForImage.map((file) => {flat_crops.push(file);});
 
-    // if (Array.isArray(output)) {
-    //   // Wrap each tensor output as Data
-    //   return output.map(t => Data.fromTensor(t, { env: this.env, kind: 'tensor', structure: 'simple' }));
-    // } else if (output instanceof this.tf.Tensor) {
-    //   return Data.fromTensor(output, { env: this.env, kind: 'tensor', structure: 'simple' });
-    // } else {
-    //   // For coco-ssd detect output which is an array of objects (detections), wrap it in Data or return raw
-    //   return output;
-    // }
+       
+
+        items.push({
+          type: entry.type,
+          key,
+          raw_file: rawFile,
+          bbox_image: bboxImage,
+          crops: cropsForImage,
+          objects: objectsForImage,
+        });
+      }
+
+      return {
+        item_name_list,
+        items,
+        output_type:"object_detection"
+      };
+    }
+    else if (task_type == "segment_image"){
+      let item_name_list = []
+      const items = [];
+      for (const key of this.input_data_obj.filelist) {
+        const entry = this.input_data_obj.get_item(key);
+
+        //console.log(entry)
+        // image-only guard
+        if (
+          ! ["video","image"].includes(entry.type) 
+        ) {
+          // skip non-image entries for this simple path
+          continue;
+        }
+
+        item_name_list.push({name:key,type:entry.type})
+        const rawFile = entry.raw_file;
+
+        // We only expect one input for image (your Data.load() makes input = [rawFile])
+        const inputs =  entry.input 
+        // detections were saved earlier by run_model()
+        const detectionsPerInput =
+          this.input_data_obj.get_results(key, this.model_name) || [];
+
+
+        // 1) mask results
+        const masked_input = await this.env.generate_inference_output(
+          "segment_image",
+          inputs,
+          detectionsPerInput,
+          "mask",
+          {...this.input_data_obj.options,name:key,output_type:"mask"},
+          entry.type
+        );
+        //console.log(objectsList)
+        const masked_input_output = Array.isArray(masked_input) ? masked_input[0] :  masked_input
+
+
+        // 2) overlay results
+        const overlay_input = await this.env.generate_inference_output(
+          "segment_image",
+          inputs,
+          detectionsPerInput,
+          "overlay",
+          {...this.input_data_obj.options,name:key,output_type:"overlay"},
+          entry.type
+        );
+        //console.log(objectsList)
+        const overlay_input_output = Array.isArray(overlay_input) ? overlay_input[0] :  overlay_input
+
+        //console.log(overlay_input_output)
+        items.push({
+          key,
+          type: entry.type,
+          raw_file: rawFile,
+          mask: masked_input_output,
+          overlay: overlay_input_output,
+        });
+      }
+      //console.log(items)
+      return {
+        item_name_list,
+        items,
+        output_type:"segment_image"
+      };
+    }
+    else {
+      throw new Error(`generate_outputs: unsupported task_type "${task_type}"`);
+    }
   }
 }
