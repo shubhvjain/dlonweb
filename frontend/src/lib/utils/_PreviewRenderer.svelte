@@ -2,26 +2,36 @@
 <script>
   	import { onMount } from 'svelte';
 
-  let  {type,data} =  $props();
+  let  {type=$bindable(),data=$bindable()} =  $props();
   let loaded = $state(false)
   let url = $state(null);
   let textContent = $state(null);
   $effect((type,data)=>{
+    console.log(type,data)
     load_media()
   })
 
 const load_media = async()=>{
-  loaded = false
+  console.log(type,data)
+  
+ 
   if ((type === "image" || type === "video") && (data instanceof Blob || data instanceof File)) {
-      url = URL.createObjectURL(data);
+    url = null
+    loaded = false  
+      setTimeout(()=>{
+        url = URL.createObjectURL(data);
+        console.log("111")
+        loaded = true
+      },50)
+      
     } else if (type === "text") {
       if (typeof data === "string") {
         textContent = data;
       } else if (data instanceof Blob || data instanceof File) {
         textContent = await data.text();
-      }
+      }     
     }
-    loaded = true
+   
 }
   onMount(async () => {load_media()})
 </script>
@@ -49,11 +59,4 @@ const load_media = async()=>{
     </div>
   {/if}
 </div>
-
-<style>
-  .preview-container {
-    max-height: 500px;
-    overflow-y: auto;
-  }
-</style>
 {/if}
