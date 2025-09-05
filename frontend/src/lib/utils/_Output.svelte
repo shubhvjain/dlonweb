@@ -84,9 +84,10 @@
 		for (let file of files) {
 			//console.log(file);
 			let f = file[selected_type];
+			console.log(f)
 			if (Array.isArray(f)) {
 				for (let itm of f) {
-					await zip.file(`itm.name`, itm);
+					await zip.file(`${itm.name}`, itm);
 				}
 			} else {
 				await zip.file(f.name, f);
@@ -101,7 +102,7 @@
 		// Create a download link
 		const a = document.createElement('a');
 		a.href = URL.createObjectURL(content);
-		a.download = `${output.model_name}_${selected_type}_files.zip`
+		a.download = `${output.model_name}_${selected_type}.zip`
 		a.click();
 		URL.revokeObjectURL(a.href); // cleanup
 	}

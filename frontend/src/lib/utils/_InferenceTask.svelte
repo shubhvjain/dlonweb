@@ -236,8 +236,9 @@
 			task_running = false;
 			emit_output(task);
 		} catch (err) {
+			console.log(err)
 			task_running = false;
-			set_error(`Pipeline failed: ${err.message}`);
+			set_error(`Pipeline failed: ${err.message||"Unexpected error occurred. Please check the input."}`);
 			console.error('Pipeline error:', err);
 		}
 	};
