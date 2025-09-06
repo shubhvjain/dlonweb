@@ -7,7 +7,7 @@ const SYSTEM_SETTINGS = {
     { title: "Deutsch", key: "de" }
   ],
   meta:{
-    name:"FLonWeb.js",
+    name:"DL.web.js",
     
   },
   sections:{
