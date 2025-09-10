@@ -1,6 +1,6 @@
 // inference.worker.js
 import * as tf from '@tensorflow/tfjs';
-import { Library } from 'dlonwebjs'; // adjust path if needed
+import { Library } from '../../../../core/dist/index.mjs'; // adjust path if needed
 
 // cache loaded models by name
 const loadedModels = {};
