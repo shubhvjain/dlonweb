@@ -1,0 +1,4 @@
+{
+  "source": { "include": ["src"], "includePattern": ".+\\.js$" },
+  "opts":   { "destination": "../docs/core", "encoding": "utf8", "recurse": true }
+}

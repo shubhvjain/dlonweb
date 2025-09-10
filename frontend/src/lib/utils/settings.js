@@ -11,7 +11,7 @@ const SYSTEM_SETTINGS = {
     
   },
   sections:{
-    server:false,
+    server:true,
     training:false,
     custom_inference:false,
   },

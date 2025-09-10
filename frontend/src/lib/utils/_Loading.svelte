@@ -19,7 +19,7 @@
       width: 6px;
       height: 6px;
       margin: 0 3px;
-      background: white;
+      background: grey;
       border-radius: 50%;
       animation: bounce 1.2s infinite ease-in-out;
     }

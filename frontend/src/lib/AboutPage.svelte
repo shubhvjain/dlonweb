@@ -62,7 +62,7 @@
 					<ul class="navbar-nav ms-auto">
 						
 						<li class="nav-item"><a class="nav-link" href="#about">About</a></li>
-						<li class="nav-item"><a class="nav-link" href="#library">Library</a></li>
+						<li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
 						<li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
 					</ul>
 				</div>
@@ -108,7 +108,7 @@
 			</div>
 		</div>
 
-		<div class="container px-3 py-5" id="features-grid">
+		<div class="container px-3 py-5" id="features">
 			<h3 class="pb-3 text-center">Features</h3>
 			<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
 				{#each features as feature}
