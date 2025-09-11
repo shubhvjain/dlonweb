@@ -2,6 +2,10 @@
 
 This repository contains the source code for the `dl.on.web.js` platform for federated learning on the browser.
 
+# Links
+- Web app:   https://dlonweb.netlify.app/
+- Documentation and project details :  https://shubhvjain.github.io/dlonweb/
+
 ## How to use the app ?
 
 ### Option 1 : Use the hosted app : 
