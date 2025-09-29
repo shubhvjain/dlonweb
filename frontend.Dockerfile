@@ -1,9 +1,9 @@
 # Stage 1: Build package (shared library)
 FROM node:20-bullseye-slim AS package-builder
 
-WORKDIR /app/package
-COPY package/package.json package/package-lock.json* ./
-COPY package/ .
+WORKDIR /app/core
+COPY core/package.json core/package-lock.json* ./
+COPY core/ .
 RUN npm install
 RUN npm run build
 
@@ -17,7 +17,7 @@ COPY frontend/package.json frontend/package-lock.json* ./
 COPY frontend/ .
 
 # Copy built package to frontend (if frontend depends on it)
-COPY --from=package-builder /app/package /app/package
+COPY --from=package-builder /app/core /app/core
 
 RUN npm install
 RUN npm run build  # assuming this builds the frontend into 'build' or 'dist'

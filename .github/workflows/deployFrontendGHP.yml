@@ -19,7 +19,7 @@ jobs:
 
       - name: Install and build backend package
         run: |
-          cd package
+          cd core
           npm install
           npm run build
 
