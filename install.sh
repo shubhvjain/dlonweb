@@ -2,8 +2,8 @@
 
 set -e  # Stop on error
 
-echo "Installing package..."
-cd package
+echo "Installing core package..."
+cd core
 npm install
 cd ..
 
@@ -16,7 +16,7 @@ if command -v poetry &> /dev/null
 then
   poetry install
 else
-  echo "⚠️ Poetry not installed. Skipping Python deps."
+  echo "Poetry not installed. Skipping Python deps."
 fi
 cd ..
 
@@ -25,4 +25,4 @@ cd frontend
 npm install
 cd ..
 
-echo "✅ All installations complete!"
+echo "All installations complete!"

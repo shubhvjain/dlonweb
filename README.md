@@ -32,7 +32,7 @@ Due to resource constraints on the browser, we also provide a standalone backend
 The project is divided into 3 main sub folders. 
 
 
-#### `package`
+#### `core`
 The shared JS npm package with core abstract base classes that define the framework for loading data , training the model and performing an inference task. It is used as a local dependency in the frontend and backend packages and enables consistent behavior across the browser and server environment. It is integrated using dependency injection allowing frontend and backend to plug in platform specific dependencies  to avoid duplicate logic. For instance, using `@tensorflow/tfjs` package in the frontend and `@tensorflow/tfjs-node` in the backend to use Tensorflow. 
 
 #### `frontend`
@@ -49,7 +49,7 @@ Additional files in the root folder:
 ## Links to documentation for each component of the project:
 - [Frontend](./frontend/README.md)
 - [Backend](./backend/README.md)
-- [Package](./package/README.md)
+- [Package](./core/README.md)
 
 ## Installation 
 
@@ -60,7 +60,7 @@ Step to get the system running locally:
 - **Install all required dependencies**: There are 2 possible options here.
   - Install all dependencies at once using `install.sh` script. Run `./install.sh` from the root of the project
   - Individual components installations:
-    - `package` : `cd package && npm install`
+    - `core` : `cd core && npm install`
     - `frontend` : `cd frontend && npm install`
     - `backend` : `cd backend && npm install`. additionally, backend also depends on python, which m
 - This can be done by installing each package individually. Or run `install.sh` script which will install all dependencies 
