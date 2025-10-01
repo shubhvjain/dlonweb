@@ -11,7 +11,7 @@ const SYSTEM_SETTINGS = {
     
   },
   sections:{
-    server:true,
+    server:false,
     training:false,
     custom_inference:false,
   },
@@ -23,7 +23,7 @@ const SYSTEM_SETTINGS = {
 
 const DEFAULT_USER_SETTINGS = {
   backendURL: 'http://localhost:3000',
-  theme: 'light',
+  theme: 'dark',
   language: 'en'
 };
 

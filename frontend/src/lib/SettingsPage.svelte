@@ -31,12 +31,12 @@
       // Make GET request to backendURL + '/'
       const response = await axios.get(`${settings.backendURL}/`);
       if (response.data.success) {
-        pingStatus = `✅ Server is up: ${response.data.message}`;
+        pingStatus = `Server is up: ${response.data.message}`;
       } else {
-        pingStatus = '⚠️ Server responded but success=false';
+        pingStatus = 'Server responded but success=false';
       }
     } catch (error) {
-      pingStatus = '❌ Server is unreachable.';
+      pingStatus = 'Server is unreachable.';
       console.error(error);
     } finally {
       loading = false;
