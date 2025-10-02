@@ -77,7 +77,7 @@
 				</p>
 				<a class="btn btn-outline-secondary" type="button"  href="#about">Learn more</a> 
         <a class="btn btn-outline-secondary" type="button"  href="{base}/inference">Run prediction</a> 
-				<a class="btn btn-outline-secondary" type="button"  href="{base}/library">Model library</a> 
+				<a class="btn btn-outline-secondary" type="button"  href="{base}/library"> Browse model library</a> 
 				{#if $systemSettings.sections.training}
 					<a class="btn btn-outline-secondary" type="button"  href="{base}/training">Train a model</a> 	
 				{/if}			

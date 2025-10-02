@@ -296,7 +296,11 @@
 	<div class="card-body">
 		<div class="p-1 mb-2 pt-2">
 			<!-- {#if workerRunning}<p>Progress: {progress.percentage.toFixed(1)}%</p>{/if} -->
-			<h5 class="card-title">1. {$translations.choose_model}</h5>
+			
+			{#if ! model_name }
+			<h5 class="card-title">1. {$translations.choose_model}</h5>	
+			{/if}
+			
 
 			<select
 				class="form-select form-select-lg"
@@ -326,7 +330,12 @@
 		</div>
 
 		<div class="p-1 mb-2 pt-4">
+			{#if model_name }
+			<h5 class="card-title"> {$translations.upload_data}</h5>	
+			{:else}
 			<h5 class="card-title">2. {$translations.upload_data}</h5>
+			{/if}
+			
 			<Input data_emit={on_input_valid} />
 		</div>
 
@@ -376,7 +385,7 @@
 			<!-- Right section: Buttons -->
 			<div class="d-flex flex-column">
 				<button
-					class="btn btn-lg btn-success mb-2"
+					class="btn btn-lg btn-primary mb-2"
 					disabled={task_running || error}
 					onclick={inference_pipeline}
 				>
@@ -427,4 +436,9 @@
 	.progress {
 		height: 8px;
 	}
+	
+  select.form-select:disabled {
+    background-image: none;
+  }
+
 </style>

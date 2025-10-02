@@ -106,8 +106,8 @@
 		<button id="theme-toggle" class="btn btn-sm"  	title="Toggle theme" onclick={toggle_theme}>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				width="14"
-				height="14"
+				width="16"
+				height="16"
 				fill="currentColor"
 				class="bi bi-moon"
 				viewBox="0 0 16 16"
@@ -193,23 +193,38 @@
 				<a
 					class="nav-link d-flex align-items-center gap-2"
 					aria-current="page"
-					href="/about"
+					href={base + '/about'}
 				>
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill" viewBox="0 0 16 16">
-					<path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2"/>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+					<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+					<path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
 				</svg>
 					{$translations.about}
 				</a>
-
 			</li> 
-					<li class="nav-item">
+			
+					<!-- <li class="nav-item">
 						<a class="nav-link d-flex align-items-center gap-2" href="{base}/inference">
-							<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
-								<path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">
+								<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+								<path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"/>
 							</svg>
 							{$translations.inference}
 						</a>
-					</li>
+					</li> -->
+
+					<li class="nav-item">
+						<a
+							class="nav-link d-flex align-items-center gap-2"
+							aria-current="page"
+							href={base + '/library'}
+						>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-view-stacked" viewBox="0 0 16 16">
+							<path d="M3 0h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm0 8h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
+						</svg>
+						{$translations.model_library}
+						</a>
+					</li> 
 					{#if systemSettingsUI.sections.training}
 					<li class="nav-item">
 						<a class="nav-link d-flex align-items-center gap-2" href="{base}/training">
@@ -222,6 +237,41 @@
 					</li>
 					{/if}
 				</ul>
+		
+			<h5 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"> <span>{$translations.inference}</span> <a class="link-secondary" href="{base}/inference" aria-label="Add a new report"> 	 	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">
+				<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+				<path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"/>
+			</svg>   </a> </h5>
+
+
+
+			<ul class="nav flex-column mb-auto">
+				{#each models as mdl}
+					<li class="nav-item">
+						<a
+							class="nav-link d-flex align-items-center gap-2"
+							href={base + '/inference/' + mdl.value}
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="16"
+								height="16"
+								fill="currentColor"
+								class="bi bi-file-earmark-text flex-shrink-0"
+								viewBox="0 0 16 16"
+							>
+								<path
+									d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5"
+								/>
+								<path
+									d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
+								/>
+							</svg>
+							{mdl.label[userSettingsUI.language]}
+						</a>
+					</li>
+				{/each}
+			</ul>
 				{#if systemSettingsUI.sections.server}
 				<h6
 					class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"
@@ -272,52 +322,7 @@
 					</li>
 				</ul>
 				{/if}
-				<h6
-					class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase"
-				>
-					<span>  {$translations.model_library}</span>
-				</h6>
-				<ul class="nav flex-column mb-auto">
-
-
-					<li class="nav-item">
-						<a
-							class="nav-link d-flex align-items-center gap-2"
-							href={base + '/library'}
-						>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-view-stacked" viewBox="0 0 16 16">
-							<path d="M3 0h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm0 8h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
-						</svg>
-						{$translations.model_library}
-						</a>
-					</li>
-
-					{#each models as mdl}
-						<li class="nav-item">
-							<a
-								class="nav-link d-flex align-items-center gap-2"
-								href={base + '/inference/' + mdl.value}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="16"
-									height="16"
-									fill="currentColor"
-									class="bi bi-file-earmark-text"
-									viewBox="0 0 16 16"
-								>
-									<path
-										d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5"
-									/>
-									<path
-										d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
-									/>
-								</svg>
-								{mdl.label[userSettingsUI.language]}
-							</a>
-						</li>
-					{/each}
-				</ul>
+			
 			</div>
 		</div>
 	</div>
