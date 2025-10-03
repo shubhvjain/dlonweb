@@ -1,0 +1,50 @@
+name: Deploy Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - release  
+
+jobs:
+  build_docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install core dependencies
+        run: |
+          cd core
+          npm install
+
+      - name: Generate JSDoc documentation
+        run: |
+          cd core
+          npm run docs  # outputs to ../docs
+
+      - name: Upload Docs Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/   # deploy the root docs folder
+
+  deploy:
+    needs: build_docs
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

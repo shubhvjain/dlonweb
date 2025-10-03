@@ -20,7 +20,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "docs": "jsdoc -c jsdoc.json -R README.md"
+    "docs": "jsdoc -c jsdoc.json"
   },
   "keywords": [
     "tensorflow",
