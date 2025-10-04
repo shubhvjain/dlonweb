@@ -60,7 +60,7 @@ async function serializeOutput(out) {
     return Promise.all(out.map(serializeOutput)); // Handle async recursively
   }
 
-  // plain object / number / string → pass through
+  // plain object / number / string - pass through
   if (
     typeof out === 'object' ||
     typeof out === 'number' ||

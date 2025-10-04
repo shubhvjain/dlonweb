@@ -20,7 +20,7 @@
 
   async function pingServer() {
     if (!settings.backendURL) {
-      pingStatus = '⚠️ Please enter backend URL first.';
+      pingStatus = 'Please enter backend URL first.';
       return;
     }
 
