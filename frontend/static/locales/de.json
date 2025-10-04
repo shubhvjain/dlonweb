@@ -25,8 +25,15 @@
   "no_model":"Bitte zuerst ein Modell auswählen",
   "run":"Start",
   "pipeline_invalid":"Etwas stimmt mit den Daten oder dem Modell nicht",
+
+  "pipeline_01": "Kein Modell ausgewählt",
+  "pipeline_02": "Keine Eingabedaten bereitgestellt",
+
+
   "pipeline1":"Starte...",
-  "pipeline2":"Daten werden geladen...",
+  "pipeline20": "Eingabedaten werden verarbeitet",
+  "pipeline21": "Eingabedaten verarbeitet. Modell wird geladen",
+
   "pipeline3":"Arbeitet...",
   "pipeline4":"Fertig!",
   "website":"Zur Website",
@@ -51,5 +58,9 @@
   "output_label7":"Segmentierungsmaske",
   "output_label8":"Keine Segmentierungsmaske. ",
   "output_label9":"Bild-Overlay-Maske",
-  "output_label10":"Keine Overlay-Masken."
+  "output_label10":"Keine Overlay-Masken.",
+
+  "inference_label1": "Aufgabe ausführen auf",
+  "inference_label2": "Browser",
+  "inference_label3": "Server"
 }

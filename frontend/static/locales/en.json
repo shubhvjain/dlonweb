@@ -25,9 +25,15 @@
   "no_model":"Please select a model before running",
   "run":"Run",
   "pipeline_invalid":"Something is wrong with the data or model",
+
+  "pipeline_01":"No model selected",
+  "pipeline_02":"No input data provided",
+
   "pipeline1":"Starting.",
-  "pipeline2":"Loading your data",
-  "pipeline3":"Working",
+  
+  "pipeline20":"Processing input data",
+  "pipeline21":"Input data processed. Now loading the model",
+  "pipeline3":"Model loaded. Running inference",
   "pipeline4":"Done!",
   "website":"View website",
   "model_input":"Input",
@@ -52,6 +58,10 @@
   "output_label7":"Segmentation mask",
   "output_label8":"No segmentation masks.",
   "output_label9":"Image overlay mask",
-  "output_label10":"No overlay masks."
+  "output_label10":"No overlay masks.",
+
+  "inference_label1":"Run task on",
+  "inference_label2":"Browser",
+  "inference_label3":"Server"
 
 }
