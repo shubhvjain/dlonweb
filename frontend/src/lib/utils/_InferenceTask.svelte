@@ -13,6 +13,7 @@
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
+	import axios from 'axios';
 
 	import { Library, Data, InferenceTask } from 'dlonwebjs';
 	import { adaptor } from '$lib/utils/adapter.browser';
@@ -70,6 +71,7 @@
 		//task_running = true
 		app_options = SYSTEM_SETTINGS.sections;
 		console.log(app_options);
+		console.log($userSettings);
 	});
 
 	/**
@@ -220,8 +222,8 @@
 
 				// 5) prepare inference task in web_worker mode
 				const task = new InferenceTask({
-					env: adaptor, 
-					model_name: selected_model, 
+					env: adaptor,
+					model_name: selected_model,
 					run_mode: 'web_worker',
 					worker
 				});
@@ -239,13 +241,83 @@
 				// If the race resolved from runPromise, grab its value; if it was the worker error,
 				// the catch below will handle it.
 				output = result || (await runPromise);
+
+				const final_output = await task.generate_outputs();
+				console.log(final_output);
 				set_success($translations['pipeline4']);
 				console.log('Pipeline output:', output);
 				//console.log(task)
 				task_running = false;
-				emit_output(task);
+
+				emit_output(final_output);
 			} else if (select_location == 'server') {
-				
+				// check if url provided
+				// check if server reachable
+				// send request
+
+				task_running = true;
+				progress = { percent: 0 };
+
+				set_success($translations['pipeline5']);
+
+				// Gather files (same as browser mode)
+				const filesArray = Array.from(get(filesStore) || []);
+
+				if (filesArray.length === 0) {
+					throw new Error($translations['no_input']);
+				}
+
+				console.log(filesArray);
+
+				// Prepare form data
+				const formData = new FormData();
+
+				// Add all files
+				filesArray.forEach((file) => {
+					formData.append('files', file);
+				});
+
+				// Add model name and options
+				formData.append('model_name', selected_model);
+				formData.append('input_options', JSON.stringify(sanitize_JSON(input_options)));
+
+				// 2. Send it to your inference endpoint
+				let server_url = $userSettings.backendURL;
+				const response = await axios.post(`${server_url}/inference`, formData, {
+					headers: {
+						Accept: 'application/json'
+					}
+				});
+
+				console.log(response.data)
+				let final_output =  deserializeFromHTTP(response.data)
+
+				//const { buffer, meta } = response.data;
+
+
+
+				// 3. Rebuild Data object from server response
+				// const binary = Uint8Array.from(atob(buffer), (c) => c.charCodeAt(0));
+				// const outputBlob = new Blob([binary], { type: meta.mimeType });
+				// const outputFile = new File([outputBlob], meta.fileName || 'output.dat', {
+				// 	type: meta.mimeType
+				// });
+				// console.log(outputFile);
+				// output = new Data(outputFile, {
+				// 	env: browserOptions.env,
+				// 	kind: meta.kind,
+				// 	structure: meta.structure,
+				// 	meta: meta.meta
+				// });
+				// await output.load();
+
+				//task_run_status = 'Inference complete on server';
+
+				if (emit_output) {
+					emit_output(final_output);
+				}
+				set_success($translations['pipeline4']);
+				task_running = false;
 			}
 		} catch (err) {
 			console.log(err);
@@ -269,6 +341,44 @@
 				set_success('Inference pipeline stopped');
 			}, 500);
 		}
+	};
+
+	/**
+	 * Deserialize output data from HTTP response (Browser only)
+	 * Converts base64 strings back to File objects
+	 *
+	 * @param {Object} serializedData - Data received from server
+	 * @returns {Object} Output data with File objects
+	 */
+	const deserializeFromHTTP = (serializedData) => {
+		return {
+			...serializedData,
+			files: serializedData.files.map((fileEntry) => ({
+				...fileEntry,
+				input: _base64ToFile(fileEntry.input),
+				outputs: fileEntry.outputs.map((output) => ({
+					...output,
+					file: _base64ToFile(output.file)
+				}))
+			}))
+		};
+	};
+
+	/**
+	 * Convert base64 object to File (Browser helper)
+	 * @private
+	 */
+	const _base64ToFile = (fileObj) => {
+		const byteString = atob(fileObj.data);
+		const arrayBuffer = new ArrayBuffer(byteString.length);
+		const uint8Array = new Uint8Array(arrayBuffer);
+
+		for (let i = 0; i < byteString.length; i++) {
+			uint8Array[i] = byteString.charCodeAt(i);
+		}
+
+		const blob = new Blob([arrayBuffer], { type: fileObj.type });
+		return new File([blob], fileObj.name, { type: fileObj.type });
 	};
 
 	// Dev utility
@@ -421,8 +531,8 @@
 				</button>
 
 				<!-- {#if task_running}
-			<button class="btn btn-link" onclick={cancel_pipeline}> Cancel </button>
-		{/if} -->
+				<button class="btn btn-link" onclick={cancel_pipeline}> Cancel </button>
+			{/if} -->
 			</div>
 		</div>
 

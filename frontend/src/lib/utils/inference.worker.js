@@ -88,20 +88,24 @@ self.onmessage = async (e) => {
 		let start_time = Date.now()
 		// 1) load model if needed
 		let model = loadedModels[model_name];
+		
 		if (!model) {
 			// env stub: only tf
 			model = await Library.load_model({ tf }, basePath, model_name);
 			loadedModels[model_name] = model;
 		}
 
+		let model_timing = Date.now() - start_time
+
 		// 2) iterate over items
 		const keys = Object.keys(input_map || {});
 		const output_map = {};
+		let timing_map = {}
 
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const entry = input_map[key];
-
+			const item_start_time = Date.now()
 			// ALWAYS array of serialized tensors per your InferenceTask.load_data
 			const serializedList = entry.input_tensor || [];
 			const tensors = serializedList.map(deserializeTensor);
@@ -129,6 +133,7 @@ self.onmessage = async (e) => {
 
 			// store only the outputs array (mirrors main-thread path)
 			output_map[key] = perItemOutputs;
+			timing_map[key] = Date.now() - item_start_time
 
 			// 3) progress update
 			self.postMessage({
@@ -136,10 +141,8 @@ self.onmessage = async (e) => {
 				percent: Math.round(((i + 1) / keys.length) * 100)
 			});
 		}
-		let end_time =  Date.now()
-		let run_time = end_time- start_time
 		// 4) done
-		self.postMessage({ type: 'done', output_map,run_time });
+		self.postMessage({ type: 'done', output_map,timing_map ,model_timing});
 	} catch (err) {
 		self.postMessage({ type: 'error', error: err?.message || String(err) });
 	}

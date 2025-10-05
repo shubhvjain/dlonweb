@@ -30,11 +30,17 @@
   "pipeline_02":"No input data provided",
 
   "pipeline1":"Starting.",
-  
+
   "pipeline20":"Processing input data",
   "pipeline21":"Input data processed. Now loading the model",
   "pipeline3":"Model loaded. Running inference",
   "pipeline4":"Done!",
+
+  "pipeline5":"Uploading data to backend server",
+  "pipeline6": "Running inference on server...",
+  "pipeline7": "Processing server response...",
+
+
   "website":"View website",
   "model_input":"Input",
   "model_output":"Output",

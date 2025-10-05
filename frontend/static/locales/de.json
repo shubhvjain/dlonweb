@@ -36,6 +36,12 @@
 
   "pipeline3":"Arbeitet...",
   "pipeline4":"Fertig!",
+
+  "pipeline5": "Daten werden auf Backend-Server hochgeladen",
+  "pipeline6": "Inferenz läuft auf Server...",
+  "pipeline7": "Serverantwort wird verarbeitet...",
+
+
   "website":"Zur Website",
   "model_input":"Eingabe",
   "model_output":"Ausgabe",
