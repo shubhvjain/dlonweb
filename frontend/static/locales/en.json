@@ -40,6 +40,8 @@
   "pipeline6": "Running inference on server...",
   "pipeline7": "Processing server response...",
 
+  "pipeline8": "Inference done. Generating output",
+
 
   "website":"View website",
   "model_input":"Input",

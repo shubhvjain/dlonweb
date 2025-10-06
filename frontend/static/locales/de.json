@@ -41,6 +41,8 @@
   "pipeline6": "Inferenz läuft auf Server...",
   "pipeline7": "Serverantwort wird verarbeitet...",
 
+  "pipeline8": "Inference done. Generating output",
+
 
   "website":"Zur Website",
   "model_input":"Eingabe",

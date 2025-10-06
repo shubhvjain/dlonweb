@@ -240,9 +240,16 @@
 				const result = await Promise.race([runPromise, workerErrorPromise]);
 				// If the race resolved from runPromise, grab its value; if it was the worker error,
 				// the catch below will handle it.
+				
 				output = result || (await runPromise);
-
-				const final_output = await task.generate_outputs();
+				let final_output ;
+				try {
+					set_success($translations['pipeline8']);
+					final_output = await task.generate_outputs();	
+				} catch (error) {
+					console.log(error)
+				}
+				
 				console.log(final_output);
 				set_success($translations['pipeline4']);
 				//console.log('Pipeline output:', output);
