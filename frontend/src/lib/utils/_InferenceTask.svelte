@@ -245,7 +245,7 @@
 				const final_output = await task.generate_outputs();
 				console.log(final_output);
 				set_success($translations['pipeline4']);
-				console.log('Pipeline output:', output);
+				//console.log('Pipeline output:', output);
 				//console.log(task)
 				task_running = false;
 

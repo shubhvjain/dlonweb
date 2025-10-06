@@ -65,7 +65,7 @@
 		{#each output_stack as out}
 		<div class="row justify-content-md-center mt-4">
 			<div class="col-lg-8">
-				<Output output={out} />
+				<Output outputData={out} />
 			</div>
 			
 		</div>
