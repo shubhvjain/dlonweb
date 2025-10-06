@@ -382,9 +382,10 @@ async _run_model_main_thread(progress_callback) {
     this.timings.inference = totalInference;
 
     // Build base output structure
+    const taskId = `task_${Math.floor(Date.now() / 1000)}`;
     const outputData = {
       task: {
-        id: `task_${this.task_start_time || Date.now()}`,
+        id: taskId,
         name: this.name,
         status: "completed",
         created_at: this.task_start_time
@@ -427,6 +428,7 @@ async _run_model_main_thread(progress_callback) {
     //   this.task_end_time && this.task_start_time
     //     ? this.task_end_time - this.task_start_time
     //     : Object.values(this.timings).reduce((a, b) => a + b, 0);
+    //console.log(outputData)
     return outputData;
   }
 

@@ -47,12 +47,13 @@
 		// Handle report download separately
 		if (selectedType === 'report') {
 			const report =  inferenceOutput.toReportWithOutputs();
+			report["execution"]["useragent"] =  typeof navigator !== 'undefined' ? navigator.userAgent : "not available";
 			const blob = new Blob([JSON.stringify(report, null, 2)], {
 				type: 'application/json'
 			});
 			const a = document.createElement('a');
 			a.href = URL.createObjectURL(blob);
-			a.download = `${inferenceOutput.model.name}_report.json`;
+			a.download = `${inferenceOutput.task.id}_report.json`;
 			a.click();
 			URL.revokeObjectURL(a.href);
 			return;
@@ -75,7 +76,7 @@
 		const content = await zip.generateAsync({ type: 'blob' });
 		const a = document.createElement('a');
 		a.href = URL.createObjectURL(content);
-		a.download = `${inferenceOutput.model.name}_${selectedType}.zip`;
+		a.download = `${inferenceOutput.task.id}_${selectedType}.zip`;
 		a.click();
 		URL.revokeObjectURL(a.href);
 	}

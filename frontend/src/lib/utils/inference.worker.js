@@ -102,6 +102,11 @@ self.onmessage = async (e) => {
 		const output_map = {};
 		let timing_map = {}
 
+    self.postMessage({
+      type: 'progress',
+      percent: 0
+    });
+
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const entry = input_map[key];
