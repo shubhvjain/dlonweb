@@ -1,8 +1,8 @@
 # Deep learning on the web
 
-This repository contains the source code for the `dl.on.web.js` platform for federated learning on the browser.
+This repository contains the source code for  `dl.web.js`, a platform for federated learning on the browser.
 
-# Links
+## Links
 - Web app:   https://dlonweb.netlify.app/
 - Documentation and project details :  https://shubhvjain.github.io/dlonweb/
 
@@ -11,6 +11,7 @@ This repository contains the source code for the `dl.on.web.js` platform for fed
 ### Option 1 : Use the hosted app : 
 - Simply go to  [https://dlonweb.netlify.app](https://dlonweb.netlify.app)  
 - Upload your input, select a model and get the output - as simple as that!
+- The inputs you upload stay on your browser 
   
 ### Option 2 : Host you own version 
 - You can easily do that as well or just run it on your local machine 
@@ -20,41 +21,52 @@ This repository contains the source code for the `dl.on.web.js` platform for fed
 
 Due to resource constraints on the browser, we also provide a standalone backend service accessible via HTTP. It enables additional functionalities like converting Keras models for browser compatible inference
 
+## How to setup the optional backend server?
 
-## Overall Inference Pipeline 
 
-![Overview of inference pipeline](./frontend/static/images/overall_arch.svg)
-
-## Project architecture
-
-### Folder structure
+## Folder structure
 
 The project is divided into 3 main sub folders. 
 
+### `core`
+- The shared JS npm package with core abstract base classes for loading data , training the model and performing an inference task. 
+- It is used as a local dependency in the frontend and backend packages and enables consistent behavior across the browser and server environment. 
+- It is integrated using dependency injection allowing frontend and backend to plug in platform specific dependencies  to avoid duplicate logic. For instance, using `@tensorflow/tfjs` package in the frontend and `@tensorflow/tfjs-node` in the backend to use Tensorflow. 
+- See the [README file](./core/README.md) for more details
 
-#### `core`
-The shared JS npm package with core abstract base classes that define the framework for loading data , training the model and performing an inference task. It is used as a local dependency in the frontend and backend packages and enables consistent behavior across the browser and server environment. It is integrated using dependency injection allowing frontend and backend to plug in platform specific dependencies  to avoid duplicate logic. For instance, using `@tensorflow/tfjs` package in the frontend and `@tensorflow/tfjs-node` in the backend to use Tensorflow. 
+### `frontend`
+- Web-based user interface. 
+- The main app. 
+- Build using the [Svelte](https://svelte.dev/) framework. 
+- Styling using [Bootstrap 5](https://getbootstrap.com/)
+- See the [README file](./frontend/README.md) for more details
 
-#### `frontend`
- Web-based user interface. The main app. Build using the `Svelte` framework.  
+
+### `backend`
+- Node.js backend with Python (Poetry) component.
+- This serves and an additional,optional standalone service that can increase the power of the frontend. Needs to be run on a local port and is accessed via http from the frontend.
+- See the [README file](./backend/README.md) for more details
 
 
-#### `backend`
- Node.js backend with Python (Poetry) components. An additional standalone service that can increase the power of the frontend. Needs to be run on a local port and is accessed via http from the frontend.
+### Additional items in the root folder
 
-Additional files in the root folder: 
+- `install.sh` :  Script to install all the whole project on a local computer. See the installation section for more details 
+- `docs` : this folder contains documentation files along with some demo input and output data
+- `backend.Dockerfile` : the docker file for backend
+- `compose.yml` : The docker compose file for the project
+- `frontend.Dockerfile` : the docker file for frontend
+- `frontend.nginx.conf` : the nginx config file used in the docker container to serve frontend
+- `netlify.toml` : the configuration file for deploying frontend on [netlify](https://www.netlify.com/)
 
-- `install.sh` :  Script to install all dependencies
-
-## Links to documentation for each component of the project:
-- [Frontend](./frontend/README.md)
-- [Backend](./backend/README.md)
-- [Package](./core/README.md)
 
 ## Installation 
 
-Step to get the system running locally:
+Step to get the system running locally
 
+- **Dependencies**
+  - [Node.js](https://nodejs.org/en) (version 20 or above)
+  - [Python](https://www.python.org/) (3.10 or above)
+  - [Poetry](https://python-poetry.org/) 
 - **Clone the repository** : `git clone https://github.com/shubhvjain/dlonweb1.git dlonweb` 
 - `cd dlonweb`
 - **Install all required dependencies**: There are 2 possible options here.
@@ -65,12 +77,15 @@ Step to get the system running locally:
     - `backend` : `cd backend && npm install`. additionally, backend also depends on python, which m
 - This can be done by installing each package individually. Or run `install.sh` script which will install all dependencies 
 
-## Development 
 
-### Git workflow 
+## Overall Inference Pipeline 
+
+![Overview of inference pipeline](./frontend/static/images/overall_arch.svg)
+
+
+## Development notes  : Git workflow 
 
 - All current development happens on the `main` branch 
 - The current release version is on the `release` branch
 - For new development, create a feature branch from `main` and create a PR to `main`
 - To release a new version : create a PR from `main`  to `release`
-

@@ -9,12 +9,16 @@ export class Library {
     projects: {
       tf: {
         list: false,
-        title: "Pre-trained models available in TensorFlow.js",
-        website: "https://github.com/tensorflow/tfjs-models",
-        about: {
-          en: "A collection of ready-to-use machine learning models, optimized for TensorFlow.js and the browser. These models cover tasks such as object detection, image classification, and more.",
-          de: "Eine Sammlung gebrauchsfertiger Machine-Learning-Modelle, optimiert für TensorFlow.js und die Ausführung im Browser. Die Modelle decken Aufgaben wie Objekterkennung, Bildklassifikation und weitere Anwendungsfälle ab.",
+        // details about the project
+        meta: {
+          title: "Pre-trained models available in TensorFlow.js",
+          website: "https://github.com/tensorflow/tfjs-models",
+          about: {
+            en: "A collection of ready-to-use machine learning models, optimized for TensorFlow.js and the browser. These models cover tasks such as object detection, image classification, and more.",
+            de: "Eine Sammlung gebrauchsfertiger Machine-Learning-Modelle, optimiert für TensorFlow.js und die Ausführung im Browser. Die Modelle decken Aufgaben wie Objekterkennung, Bildklassifikation und weitere Anwendungsfälle ab.",
+          },
         },
+
         models: {
           "coco-ssd": {
             active: true,
@@ -45,11 +49,14 @@ export class Library {
 
       bagls: {
         list: true,
-        title: "The BAGLS project: Benchmark for Automatic Glottis Segmentation",
-        website: "https://www.bagls.org/",
-        about: {
-          en: "BAGLS is the first large-scale, publicly available dataset of endoscopic high-speed video with frame-wise segmentation annotations. Collected in collaboration with seven institutions, it comprises 59,250 annotated frames.",
-          de: "BAGLS ist der erste groß angelegte, frei verfügbare Datensatz aus endoskopischen Hochgeschwindigkeitsvideos mit bildweisen Segmentierungsannotationen. Er wurde in Zusammenarbeit mit sieben Einrichtungen erstellt und umfasst 59.250 annotierte Frames.",
+        meta: {
+          title:
+            "The BAGLS project: Benchmark for Automatic Glottis Segmentation",
+          website: "https://www.bagls.org/",
+          about: {
+            en: "BAGLS is the first large-scale, publicly available dataset of endoscopic high-speed video with frame-wise segmentation annotations. Collected in collaboration with seven institutions, it comprises 59,250 annotated frames.",
+            de: "BAGLS ist der erste groß angelegte, frei verfügbare Datensatz aus endoskopischen Hochgeschwindigkeitsvideos mit bildweisen Segmentierungsannotationen. Er wurde in Zusammenarbeit mit sieben Einrichtungen erstellt und umfasst 59.250 annotierte Frames.",
+          },
         },
 
         models: {

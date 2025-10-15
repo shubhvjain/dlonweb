@@ -39,41 +39,43 @@ function deserializeTensor(obj) {
 
 
 /** Serialize possible outputs so they can be structured-cloned */
-function serializeOutput(out) {
-	if (out == null) return out;
+async function serializeOutput(out) {
+  if (out == null) return out;
 
-	// tensor → plain object with buffer/shape/dtype
-	if (out instanceof tf.Tensor) {
-		const data = out.dataSync(); // TypedArray
-		return {
-			__tensor__: true,
-			buffer: data.buffer, // ArrayBuffer (cloneable; could also be transferable)
-			shape: out.shape,
-			dtype: out.dtype
-		};
-	}
+  // tensor → plain object with buffer/shape/dtype
+  if (out instanceof tf.Tensor) {
+    const data = await out.data(); // 
+    return {
+      __tensor__: true,
+      buffer: data.buffer,
+      byteOffset: data.byteOffset,
+      length: data.length,
+      shape: out.shape,
+      dtype: out.dtype
+    };
+  }
 
-	// array → serialize each element
-	if (Array.isArray(out)) {
-		return out.map(serializeOutput);
-	}
+  // array → serialize each element
+  if (Array.isArray(out)) {
+    return Promise.all(out.map(serializeOutput)); // Handle async recursively
+  }
 
-	// plain object / number / string → pass through
-	if (
-		typeof out === 'object' ||
-		typeof out === 'number' ||
-		typeof out === 'string' ||
-		typeof out === 'boolean'
-	) {
-		return out;
-	}
+  // plain object / number / string - pass through
+  if (
+    typeof out === 'object' ||
+    typeof out === 'number' ||
+    typeof out === 'string' ||
+    typeof out === 'boolean'
+  ) {
+    return out;
+  }
 
-	// fallback: stringify
-	try {
-		return JSON.parse(JSON.stringify(out));
-	} catch {
-		return String(out);
-	}
+  // fallback: stringify
+  try {
+    return JSON.parse(JSON.stringify(out));
+  } catch {
+    return String(out);
+  }
 }
 
 self.onmessage = async (e) => {
@@ -86,20 +88,29 @@ self.onmessage = async (e) => {
 		let start_time = Date.now()
 		// 1) load model if needed
 		let model = loadedModels[model_name];
+		
 		if (!model) {
 			// env stub: only tf
 			model = await Library.load_model({ tf }, basePath, model_name);
 			loadedModels[model_name] = model;
 		}
 
+		let model_timing = Date.now() - start_time
+
 		// 2) iterate over items
 		const keys = Object.keys(input_map || {});
 		const output_map = {};
+		let timing_map = {}
+
+    self.postMessage({
+      type: 'progress',
+      percent: 0
+    });
 
 		for (let i = 0; i < keys.length; i++) {
 			const key = keys[i];
 			const entry = input_map[key];
-
+			const item_start_time = Date.now()
 			// ALWAYS array of serialized tensors per your InferenceTask.load_data
 			const serializedList = entry.input_tensor || [];
 			const tensors = serializedList.map(deserializeTensor);
@@ -110,7 +121,7 @@ self.onmessage = async (e) => {
 				// run detect per tensor (coco-ssd expects an image tensor)
 				for (const t of tensors) {
 					const out = await model.detect(t);
-					perItemOutputs.push(serializeOutput(out)); // out is plain objects already, but safe to serialize
+					perItemOutputs.push(await serializeOutput(out)); // out is plain objects already, but safe to serialize
 					t.dispose?.();
 				}
 			} else if (typeof model.predict === 'function') {
@@ -118,7 +129,7 @@ self.onmessage = async (e) => {
 				for (const t of tensors) {
 					const out = model.predict(t);
 					// out can be a tensor, array of tensors, or plain objects
-					perItemOutputs.push(serializeOutput(out));
+					perItemOutputs.push(await serializeOutput(out));
 					t.dispose?.();
 				}
 			} else {
@@ -127,6 +138,7 @@ self.onmessage = async (e) => {
 
 			// store only the outputs array (mirrors main-thread path)
 			output_map[key] = perItemOutputs;
+			timing_map[key] = Date.now() - item_start_time
 
 			// 3) progress update
 			self.postMessage({
@@ -134,10 +146,8 @@ self.onmessage = async (e) => {
 				percent: Math.round(((i + 1) / keys.length) * 100)
 			});
 		}
-		let end_time =  Date.now()
-		let run_time = end_time- start_time
 		// 4) done
-		self.postMessage({ type: 'done', output_map,run_time });
+		self.postMessage({ type: 'done', output_map,timing_map ,model_timing});
 	} catch (err) {
 		self.postMessage({ type: 'error', error: err?.message || String(err) });
 	}

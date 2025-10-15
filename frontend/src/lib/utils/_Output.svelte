@@ -1,271 +1,338 @@
 <script>
 	import { onMount } from 'svelte';
-	// import Preview from './_Preview.svelte';
-	let { output } = $props();
-	let details = $state({ files: 0, time: 0 });
-	let loaded = $state(false);
 	import { translations, userSettings } from '$lib/utils/store.js';
 	import JSZip from 'jszip';
-
 	import PreviewRenderer from './_PreviewRenderer.svelte';
 	import Loading from './_Loading.svelte';
-	let preview_data = $state({});
-	let show_loader = $state(false);
-	let key_selected = $state('');
-	let loaded_selected = $state(false);
-	let preview_item = $state();
-	let selected_type = $state('raw_file');
+	import { InferenceOutput } from './inference.output.js';
+
+	let { outputData } = $props();
+
+	let inferenceOutput = $state(null);
+	let loaded = $state(false);
+	let keySelected = $state('');
+	let selectedFile = $state(null);
+	let selectedType = $state('raw_file');
+
 	onMount(async () => {
-		if (output) {
-			console.log(output);
-			details.time = Math.round(
-				Object.values(output['run_times']).reduce((a, b) => a + b, 0) / 1000
-			);
-			details.files = output['input_data_obj']['filelist'].length;
-			preview_data = await output.generate_outputs();
-			console.log(preview_data);
+		if (outputData) {
+			console.log('111');
+			console.log(outputData);
+			inferenceOutput = new InferenceOutput(outputData);
 			loaded = true;
-			if(preview_data.item_name_list.length>0){
-				select_item(preview_data.item_name_list[0]['name']);
+
+			// Select first file
+			if (inferenceOutput.fileList.length > 0) {
+				selectItem(inferenceOutput.fileList[0].key);
 			}
 		}
 	});
-
-	const select_item = (key) => {
-		console.log(key);
-		loaded_selected = false;
-		preview_item = preview_data.items.find((it) => {
-			return it.key == key;
-		});
-		key_selected = key;
-		console.log(preview_item);
-		setTimeout(()=>{},100)
-		loaded_selected = true;
-	};
-
-	// track created Object URLs for cleanup
-	const urls = new Set();
-	const makeURL = (fileOrBlob) => {
-		console.log(fileOrBlob);
-		if (!fileOrBlob) return '';
-		const u = URL.createObjectURL(fileOrBlob);
-		urls.add(u);
-		return u;
-	};
-	const cleanupURLs = () => {
-		urls.forEach((u) => URL.revokeObjectURL(u));
-		urls.clear();
+	const selectItem = (key) => {
+		keySelected = key;
+		selectedFile = inferenceOutput.getFile(key);
+		console.log('Selected:', selectedFile);
 	};
 
 	const iconForType = (t) => {
-		if (!t) return '📎';
-		if (t.startsWith('image')) return '🖼️';
-		if (t.startsWith('video')) return '🎥';
-		if (t.startsWith('text')) return '📄';
-		return '📎';
-	};
-
-	let valid_downloads = {
-		segment_image: ['raw_file', 'mask', 'overlay'],
-		object_detection: ['raw_file', 'bbox_image', 'crops', 'objects']
+		if (!t)
+			return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-paperclip flex-shrink-0" viewBox="0 0 16 16"><path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z"/></svg>`;
+		if (t.startsWith('image'))
+			return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-image flex-shrink-0" viewBox="0 0 16 16"><path d="M6.502 7a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"/><path d="M14 14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zM4 1a1 1 0 0 0-1 1v10l2.224-2.224a.5.5 0 0 1 .61-.075L8 11l2.157-3.02a.5.5 0 0 1 .76-.063L13 10V4.5h-2A1.5 1.5 0 0 1 9.5 3V1z"/></svg>`;
+		if (t.startsWith('video'))
+			return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera-video flex-shrink-0" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2zm11.5 5.175 3.5 1.556V4.269l-3.5 1.556zM2 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>`;
+		return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-paperclip flex-shrink-0" viewBox="0 0 16 16"><path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z"/></svg>`;
 	};
 
 	async function download() {
-		// if(!  Object.keys(valid_downloads).includes(preview_data.output_type)   [selected_type]){
-		// 	throw new Error("Invalid selection")
-		// }
-
-		console.log(selected_type);
+		// Handle report download separately
+		if (selectedType === 'report') {
+			const report =  inferenceOutput.toReportWithOutputs();
+			report["execution"]["useragent"] =  typeof navigator !== 'undefined' ? navigator.userAgent : "not available";
+			const blob = new Blob([JSON.stringify(report, null, 2)], {
+				type: 'application/json'
+			});
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = `${inferenceOutput.task.id}_report.json`;
+			a.click();
+			URL.revokeObjectURL(a.href);
+			return;
+		}
 
 		const zip = new JSZip();
-		let files = preview_data.items; // downloads[selected_type]
-		//console.log(files)
-		// Add files to the zip
-		for (let file of files) {
-			//console.log(file);
-			let f = file[selected_type];
-			console.log(f)
-			if (Array.isArray(f)) {
-				for (let itm of f) {
-					await zip.file(`${itm.name}`, itm);
-				}
+
+		for (let file of inferenceOutput.files) {
+			if (selectedType === 'raw_file') {
+				zip.file(file.key, file.input);
 			} else {
-				await zip.file(f.name, f);
+				// Get outputs of selected type
+				const outputs = file.outputs.filter((o) => o.type === selectedType);
+				for (let output of outputs) {
+					zip.file(output.name, output.file);
+				}
 			}
-
-			//console.log(typeof file)
-			//const data = await file.arrayBuffer(); // read file
 		}
-		// Generate the zip
-		const content = await zip.generateAsync({ type: 'blob' });
 
-		// Create a download link
+		const content = await zip.generateAsync({ type: 'blob' });
 		const a = document.createElement('a');
 		a.href = URL.createObjectURL(content);
-		a.download = `${output.model_name}_${selected_type}.zip`
+		a.download = `${inferenceOutput.task.id}_${selectedType}.zip`;
 		a.click();
-		URL.revokeObjectURL(a.href); // cleanup
+		URL.revokeObjectURL(a.href);
 	}
+
+	// Helper to format time
+	const formatTime = (ms) => {
+		if (ms < 1000) return `${ms}ms`;
+		return `${(ms / 1000).toFixed(1)}s`;
+	};
 </script>
 
-<!-- <Preview  input={output} /> -->
-
 <div class="card">
-	{#if loaded}
+	{#if loaded && inferenceOutput}
 		<div class="card-header d-flex">
-			<div class="flex-grow-1">{output.name}</div>
-
-			{#if show_loader}
-				<div class="me-2">
-					<div class="spinner-border" role="status" style="height:15px;width:15px">
-						<span class="visually-hidden">Loading...</span>
-					</div>
-				</div>
-			{/if}
+			<div class="flex-grow-1">{inferenceOutput.task.name}</div>
 
 			<div class="me-2">
-				<span style="font-size:x-small ">{output['model_name']}</span>
+				<span style="font-size:x-small">{inferenceOutput.model.name}</span>
 			</div>
 
-			{#if details.files > 0}
-				<div class="me-2">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="16"
-						height="16"
-						fill="currentColor"
-						class="bi bi-file-earmark"
-						viewBox="0 0 16 16"
-					>
-						<path
-							d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"
-						/>
-					</svg>
+			<div class="me-2">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					fill="currentColor"
+					class="bi bi-file-earmark"
+					viewBox="0 0 16 16"
+				>
+					<path
+						d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"
+					/>
+				</svg>
+				{inferenceOutput.execution.files_processed} files
+			</div>
 
-					{details.files} files
-				</div>
-			{/if}
-
-			{#if details.time > 0}
-				<div class="">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="16"
-						height="16"
-						fill="currentColor"
-						class="bi bi-stopwatch"
-						viewBox="0 0 16 16"
-					>
-						<path d="M8.5 5.6a.5.5 0 1 0-1 0v2.9h-3a.5.5 0 0 0 0 1H8a.5.5 0 0 0 .5-.5z" />
-						<path
-							d="M6.5 1A.5.5 0 0 1 7 .5h2a.5.5 0 0 1 0 1v.57c1.36.196 2.594.78 3.584 1.64l.012-.013.354-.354-.354-.353a.5.5 0 0 1 .707-.708l1.414 1.415a.5.5 0 1 1-.707.707l-.353-.354-.354.354-.013.012A7 7 0 1 1 7 2.071V1.5a.5.5 0 0 1-.5-.5M8 3a6 6 0 1 0 .001 12A6 6 0 0 0 8 3"
-						/>
-					</svg>
-					{details.time} sec
-				</div>
-			{/if}
+			<!-- <div class="">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					fill="currentColor"
+					class="bi bi-stopwatch"
+					viewBox="0 0 16 16"
+				>
+					<path d="M8.5 5.6a.5.5 0 1 0-1 0v2.9h-3a.5.5 0 0 0 0 1H8a.5.5 0 0 0 .5-.5z" />
+					<path
+						d="M6.5 1A.5.5 0 0 1 7 .5h2a.5.5 0 0 1 0 1v.57c1.36.196 2.594.78 3.584 1.64l.012-.013.354-.354-.354-.353a.5.5 0 0 1 .707-.708l1.414 1.415a.5.5 0 1 1-.707.707l-.353-.354-.354.354-.013.012A7 7 0 1 1 7 2.071V1.5a.5.5 0 0 1-.5-.5M8 3a6 6 0 1 0 .001 12A6 6 0 0 0 8 3"
+					/>
+				</svg>
+				{formatTime(inferenceOutput.task.duration_ms)}
+			</div> -->
 		</div>
+
 		<div class="card-body">
 			<div class="card-text">
-				<div class="d-flex justify-content-end align-items-center mb-3">
-					<label for="export-options" class="me-2 mb-0"> {$translations.export_btn} </label>
+				<details>
+					<summary><h6 class="card-title d-inline">Export results</h6></summary>
 
-					<select
-						id="export-options"
-						class="form-select form-select-sm w-auto me-2"
-						bind:value={selected_type}
-					>
-						{#if output['model_meta']['type'] == 'object_detection'}
-							<option value="bbox_image">Labelled Images (ZIP)</option>
-							<!-- <option value="labels_json">Object Labels (JSON)</option> -->
-							<option value="crops">Cropped Objects (ZIP)</option>
-						{/if}
-						{#if output['model_meta']['type'] == 'segment_image'}
-							<option value="mask">Mask Files (ZIP)</option>
-							<option value="overlay">Masks Overlaid on Originals (ZIP)</option>
-							<!-- <option value="mask_arrays">Raw Mask Arrays (JSON)</option> -->
-						{/if}
-						<option value="raw_file"> Original files (Zip) </option>
-						<!-- <option value="summary_report">Summary Report (JSON)</option> -->
-					</select>
-
-					<button type="button" class="btn btn-primary btn-sm" onclick={download}>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="10"
-							height="10"
-							fill="currentColor"
-							class="bi bi-download"
-							viewBox="0 0 16 16"
-						>
-							<path
-								d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"
-							/>
-							<path
-								d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"
-							/>
-						</svg>
-						Download
-					</button>
-				</div>
-			</div>
-
-			<details>
-				<summary> <h5 class="card-title d-inline">File preview</h5> </summary>
-
-				<!-- Split layout -->
-				<div class="row g-0 border rounded overflow-hidden" style="min-height: 70vh;">
-					<!-- Left: files -->
-					<div class="col-12 col-md-4 border-end">
-						<div class="list-group list-group-flush">
-							{#each preview_data.item_name_list as k}
-								<button
-									type="button"
-									class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {key_selected ===
-									k.name
-										? 'active'
-										: ''}"
-									title={k.name}
-									onclick={() => select_item(k.name)}
-								>
-									<div class="d-flex align-items-center gap-2 text-truncate">
-										<span class="text-truncate" style="max-width: 200px;">
-											{iconForType(k.type)} {k.name}</span
-										>
+					<ul class="list-group mt-2">
+						{#if inferenceOutput.model.type === 'segment_image'}
+							<li class="list-group-item">
+								<div class="d-flex flex-column">
+									<div>
+										<input
+											class="form-check-input me-1"
+											type="radio"
+											name="listGroupRadio"
+											id="o1"
+											value="mask"
+											bind:group={selectedType}
+										/>
+										<label class="form-check-label" for="o1">Mask Files</label>
 									</div>
-								</button>
-							{/each}
-						</div>
-					</div>
+									<small class="text-muted ms-4"
+										>Raw segmentation mask files produced by the model.</small
+									>
+								</div>
+							</li>
+							<li class="list-group-item">
+								<div class="d-flex flex-column">
+									<div>
+										<input
+											class="form-check-input me-1"
+											type="radio"
+											name="listGroupRadio"
+											id="o2"
+											value="overlay"
+											bind:group={selectedType}
+										/>
+										<label class="form-check-label" for="o2">Masks Overlaid on Originals</label>
+									</div>
+									<small class="text-muted ms-4"
+										>Original input images with segmentation masks overlaid.</small
+									>
+								</div>
+							</li>
+						{/if}
 
-					<!-- Right: preview -->
-					<div class="col-12 col-md-8">
-						<div class="p-3">
-							{#if !key_selected}
-								<div class="text-muted"> {$translations.output_label1} </div>
-							{:else}
-								{#if loaded_selected}
+						{#if inferenceOutput.model.type === 'object_detection'}
+							<li class="list-group-item">
+								<div class="d-flex flex-column">
+									<div>
+										<input
+											class="form-check-input me-1"
+											type="radio"
+											name="listGroupRadio"
+											id="o3"
+											value="bbox_image"
+											bind:group={selectedType}
+										/>
+										<label class="form-check-label" for="o3">Labelled Images</label>
+									</div>
+									<small class="text-muted ms-4"
+										>Original images with bounding boxes drawn around detected objects.</small
+									>
+								</div>
+							</li>
+							<li class="list-group-item">
+								<div class="d-flex flex-column">
+									<div>
+										<input
+											class="form-check-input me-1"
+											type="radio"
+											name="listGroupRadio"
+											id="o4"
+											value="crop"
+											bind:group={selectedType}
+										/>
+										<label class="form-check-label" for="o4">Cropped Objects</label>
+									</div>
+									<small class="text-muted ms-4"
+										>Individual image files cropped from bounding boxes.</small
+									>
+								</div>
+							</li>
+						{/if}
+
+						<li class="list-group-item">
+							<div class="d-flex flex-column">
+								<div>
+									<input
+										class="form-check-input me-1"
+										type="radio"
+										name="listGroupRadio"
+										id="o5"
+										value="raw_file"
+										bind:group={selectedType}
+									/>
+									<label class="form-check-label" for="o5">Original files</label>
+								</div>
+								<small class="text-muted ms-4">The original files you uploaded.</small>
+							</div>
+						</li>
+						<li class="list-group-item">
+							<div class="d-flex flex-column">
+								<div>
+									<input
+										class="form-check-input me-1"
+										type="radio"
+										name="listGroupRadio"
+										id="o6"
+										value="report"
+										bind:group={selectedType}
+									/>
+									<label class="form-check-label" for="o6">Inference Report (JSON)</label>
+								</div>
+								<small class="text-muted ms-4"
+									>Complete inference report with all results, timings, and generated outputs
+									(excludes original input files).</small
+								>
+							</div>
+						</li>
+					</ul>
+
+					<div class="d-flex justify-content-end align-items-center mt-3">
+						<button type="button" class="btn btn-primary btn-sm" onclick={download}>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="10"
+								height="10"
+								fill="currentColor"
+								class="bi bi-download"
+								viewBox="0 0 16 16"
+							>
+								<path
+									d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"
+								/>
+								<path
+									d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"
+								/>
+							</svg>
+							Download
+						</button>
+					</div>
+				</details>
+
+				<details class="mt-2">
+					<summary><h6 class="card-title d-inline">Preview results</h6></summary>
+
+					<div class="row g-0 border rounded overflow-hidden mt-1" style="min-height: 70vh;">
+						<!-- Left: files -->
+						<div class="col-12 col-md-4 border-end">
+							<div class="list-group list-group-flush">
+								{#each inferenceOutput.fileList as item}
+									<button
+										type="button"
+										class="list-group-item list-group-item-action d-flex align-items-center justify-content-between {keySelected ===
+										item.key
+											? 'active'
+											: ''}"
+										title={item.key}
+										onclick={() => selectItem(item.key)}
+									>
+										<div class="d-flex align-items-center gap-2 text-truncate">
+											<span class="text-truncate" style="max-width: 200px;">
+												{@html iconForType(item.type)}
+												{item.key}
+											</span>
+										</div>
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Right: preview -->
+						<div class="col-12 col-md-8">
+							<div class="p-3">
+								{#if !keySelected}
+									<div class="text-muted">{$translations.output_label1}</div>
+								{:else if selectedFile}
 									<!-- Original -->
 									<h5 class="mb-3"><i class="bi bi-image me-2"></i>Original</h5>
+									<PreviewRenderer type={selectedFile.type} data={selectedFile.input} />
 
-									<PreviewRenderer type={preview_item.type} data={preview_item.raw_file} />
-
-									{#if preview_data.output_type == 'object_detection'}
-										<!-- Boxes -->
+									{#if inferenceOutput.model.type === 'object_detection'}
+										<!-- Bounding boxes -->
 										<h5 class="mb-3">
-											<i class="bi bi-bounding-box-circles me-2"></i> {$translations.output_label2} 
+											<i class="bi bi-bounding-box-circles me-2"></i>{$translations.output_label2}
 										</h5>
-										{#if preview_item?.bbox_image}
-											<PreviewRenderer type={preview_item.type} data={preview_item.bbox_image} />
+										{#if inferenceOutput.getBboxImage(keySelected)}
+											<PreviewRenderer
+												type={selectedFile.type}
+												data={inferenceOutput.getBboxImage(keySelected)}
+											/>
 										{:else}
-											<div class="text-muted mb-3">  {$translations.output_label3}  </div>
+											<div class="text-muted mb-3">{$translations.output_label3}</div>
 										{/if}
 
 										<!-- Objects list -->
-										<h5 class="mb-3"><i class="bi bi-list-ul me-2"></i>  {$translations.output_label4}  </h5>
-										{#if preview_item?.objects?.length}
+										<h5 class="mb-3">
+											<i class="bi bi-list-ul me-2"></i>{$translations.output_label4}
+										</h5>
+										{#if inferenceOutput.getDetections(keySelected).length}
 											<ul class="list-group mb-3">
-												{#each preview_item.objects as obj, i}
+												{#each inferenceOutput.getDetections(keySelected) as obj, i}
 													<li
 														class="list-group-item d-flex justify-content-between align-items-center"
 													>
@@ -278,8 +345,9 @@
 															{/if}
 															{#if obj.bbox}
 																<small class="text-muted ms-2">
-																	[x:{obj.bbox[0] | 0}, y:{obj.bbox[1] | 0}, w:{obj.bbox[2] | 0}, h:{obj
-																		.bbox[3] | 0}]
+																	[x:{Math.floor(obj.bbox[0])}, y:{Math.floor(obj.bbox[1])}, w:{Math.floor(
+																		obj.bbox[2]
+																	)}, h:{Math.floor(obj.bbox[3])}]
 																</small>
 															{/if}
 														</div>
@@ -288,56 +356,65 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="text-muted mb-3"> {$translations.output_label41}  </div>
+											<div class="text-muted mb-3">{$translations.output_label41}</div>
 										{/if}
 
 										<!-- Crops -->
 										<details class="mb-2">
-											<summary class="h6 mb-2"
-												><i class="bi bi-scissors me-2"></i>  {$translations.output_label5}  {#if preview_item?.crops?.length}<span
-														class="badge bg-secondary ms-2">{preview_item.crops.length}</span
-													>{/if}</summary
-											>
-											{#if preview_item?.crops?.length}
+											<summary class="h6 mb-2">
+												<i class="bi bi-scissors me-2"></i>{$translations.output_label5}
+												{#if inferenceOutput.getCrops(keySelected).length}
+													<span class="badge bg-secondary ms-2"
+														>{inferenceOutput.getCrops(keySelected).length}</span
+													>
+												{/if}
+											</summary>
+											{#if inferenceOutput.getCrops(keySelected).length}
 												<div class="row g-2">
-													{#each preview_item.crops as c, idx}
+													{#each inferenceOutput.getCrops(keySelected) as crop, idx}
 														<div class="col-6 col-lg-4">
-															<PreviewRenderer type={preview_item.type} data={c} />
-															<div class="small text-truncate mt-1">{c.name}</div>
+															<PreviewRenderer type={selectedFile.type} data={crop} />
+															<div class="small text-truncate mt-1">{crop.name}</div>
 														</div>
 													{/each}
 												</div>
 											{:else}
-												<div class="text-muted">  {$translations.output_label6} </div>
+												<div class="text-muted">{$translations.output_label6}</div>
 											{/if}
 										</details>
-									{:else if preview_data.output_type == 'segment_image'}
+									{:else if inferenceOutput.model.type === 'segment_image'}
+										<!-- Mask -->
 										<h5 class="mb-3">
-											<i class="bi bi-bounding-box-circles me-2"></i>   {$translations.output_label7}  
+											<i class="bi bi-bounding-box-circles me-2"></i>{$translations.output_label7}
 										</h5>
-										{#if preview_item?.mask}
-											<PreviewRenderer type={preview_item.type} data={preview_item.mask} />
+										{#if inferenceOutput.getMask(keySelected)}
+											<PreviewRenderer
+												type={selectedFile.type}
+												data={inferenceOutput.getMask(keySelected)}
+											/>
 										{:else}
-											<div class="text-muted mb-3">   {$translations.output_label8} </div>
+											<div class="text-muted mb-3">{$translations.output_label8}</div>
 										{/if}
 
+										<!-- Overlay -->
 										<h5 class="mb-3">
-											<i class="bi bi-bounding-box-circles me-2"></i>  {$translations.output_label9} 
+											<i class="bi bi-bounding-box-circles me-2"></i>{$translations.output_label9}
 										</h5>
-										{#if preview_item?.overlay}
-											<PreviewRenderer type={preview_item.type} data={preview_item.overlay} />
+										{#if inferenceOutput.getOverlay(keySelected)}
+											<PreviewRenderer
+												type={selectedFile.type}
+												data={inferenceOutput.getOverlay(keySelected)}
+											/>
 										{:else}
-											<div class="text-muted mb-3">   {$translations.output_label9} </div>
+											<div class="text-muted mb-3">{$translations.output_label9}</div>
 										{/if}
 									{/if}
-								{:else}
-									<div class="text-muted">Loadings ...</div>
 								{/if}
-							{/if}
+							</div>
 						</div>
 					</div>
-				</div>
-			</details>
+				</details>
+			</div>
 		</div>
 	{:else}
 		<Loading message="Generating preview. Please wait." />

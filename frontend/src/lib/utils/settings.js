@@ -1,29 +1,31 @@
 const STORAGE_KEY = 'dlonwebsetting';
 
-// Static system settings (read-only)
-const SYSTEM_SETTINGS = {
+/**
+ * Static system settings (read-only)
+ */
+export const SYSTEM_SETTINGS = {
   languages: [
     { title: "English", key: "en" },
     { title: "Deutsch", key: "de" }
   ],
   meta:{
     name:"DL.web.js",
-    
   },
   sections:{
-    server:true,
-    training:false,
-    custom_inference:false,
+    server:false,  // show/hide server related pages
+    training:false, // show/hide the training page
+    custom_inference:false, // toggle ability to use custom model inference
+    inference_settings:false // toggle visibility of settings on the inference page
   },
   contact:{
-    github:"https://github.com/shubhvjain/dlonweb1",
+    github:"https://github.com/shubhvjain/dlonweb",
     email:"shubhvjain@gmail.com"
   }
 };
 
 const DEFAULT_USER_SETTINGS = {
   backendURL: 'http://localhost:3000',
-  theme: 'light',
+  theme: 'dark',
   language: 'en'
 };
 

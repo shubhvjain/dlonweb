@@ -75,14 +75,26 @@
 				<p class="lead my-3">
 					Open, privacy-aware, and accessible AI for everyone.
 				</p>
-				<a class="btn btn-outline-secondary" type="button"  href="#about">Learn more</a> 
+				<!-- <a class="btn btn-outline-secondary" type="button"  href="#about">Learn more</a>  -->
         <a class="btn btn-outline-secondary" type="button"  href="{base}/inference">Run prediction</a> 
-				<a class="btn btn-outline-secondary" type="button"  href="{base}/library">Model library</a> 
+				<a class="btn btn-outline-secondary" type="button"  href="{base}/library"> Browse model library</a> 
 				{#if $systemSettings.sections.training}
 					<a class="btn btn-outline-secondary" type="button"  href="{base}/training">Train a model</a> 	
 				{/if}			
 			</div>
 		</div>
+		<div class="row mt-2 p-2">
+			<div class="col-md-5 order-md-2">
+				<h2 class=""><span class="text-muted">Introducing {$systemSettings.meta.name}</span></h2>
+				<p class="lead"> {$systemSettings.meta.name} is a browser-based application that allows anyone—whether a clinician, researcher, or student—to run deep learning models without specialized technical skills. 
+					Built with an offline-first design, it works entirely within your browser, ensuring security and reliability. 
+					With its intuitive interface and extensive model library, {$systemSettings.meta.name} lowers the barrier to adopting AI in real-world workflows.</p>
+			</div>
+			<div class="col-md-7 or1der-md-1">
+				<img class=" img-fluid mx-auto" src="images/intro.svg"   alt="DLonWeb usecases">
+			</div>
+		</div>
+
 		<div id="about" class="row p-2 mb-5 mt-5">
 			<div class="col-md-5">
 				<h3><span class="text-muted">What is federated learning ?</span></h3>
@@ -95,18 +107,7 @@
 		</div>
 	
 
-		<div class="row mt-2 p-2">
-			<div class="col-md-5 order-md-2">
-				<h2 class=""><span class="text-muted">Introducing {$systemSettings.meta.name}</span></h2>
-				<p class="lead"> {$systemSettings.meta.name} is a browser-based application that allows anyone—whether a clinician, researcher, or student—
-					to run and fine-tune deep learning models without specialized technical skills. 
-					Built with an offline-first design, it works entirely within your browser, ensuring security and reliability. 
-					With its intuitive interface and extensive model library, {$systemSettings.meta.name} lowers the barrier to adopting AI in real-world workflows.</p>
-			</div>
-			<div class="col-md-7 or1der-md-1">
-				<img class=" img-fluid mx-auto" src="images/intro.svg"   alt="DLonWeb usecases">
-			</div>
-		</div>
+	
 
 		<div class="container px-3 py-5" id="features">
 			<h3 class="pb-3 text-center">Features</h3>
