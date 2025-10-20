@@ -1,11 +1,11 @@
 # Stage 1: Build the package
 FROM node:20-bullseye-slim AS package-builder
 
-WORKDIR /app/package
+WORKDIR /app/core
 
 # Copy package source code
-COPY package/package.json package/package-lock.json* ./
-COPY package/ .
+COPY core/package.json core/package-lock.json* ./
+COPY core/ .
 
 # Install deps and build package (Vite)
 RUN npm install
@@ -30,9 +30,9 @@ COPY backend/package.json backend/package-lock.json* ./
 COPY backend/ .
 
 # Copy the entire package folder from the builder stage (with dist)
-COPY --from=package-builder /app/package /app/package
+COPY --from=package-builder /app/core /app/core
 
-# Install backend dependencies, which includes "dlonwebjs": "file:../package"
+# Install backend dependencies, which includes "dlonwebjs": "file:../core"
 RUN npm install
 RUN npm rebuild @tensorflow/tfjs-node --build-from-source
 

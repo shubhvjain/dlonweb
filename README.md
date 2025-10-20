@@ -21,8 +21,20 @@ This repository contains the source code for  `dl.web.js`, a platform for federa
 
 Due to resource constraints on the browser, we also provide a standalone backend service accessible via HTTP. It enables additional functionalities like converting Keras models for browser compatible inference
 
-## How to setup the optional backend server?
+## How to Set Up the Optional Backend Server
 
+- **Step 1:** Ensure that Docker is installed on your local machine. You can find installation instructions [here](https://docs.docker.com/engine/install/).
+
+- **Step 2:** Clone the GitHub repository. This will download the latest code for the backend server from GitHub.
+  - Command:  `git clone -b release https://github.com/shubhvjain/dlonweb.git`
+
+- **Step 3:** Open a terminal and navigate to the project's root directory.
+
+- **Step 4:** Run the Docker Compose command.
+  - The `docker-compose.yml` file in the root directory can be used to start both the frontend and backend services.  
+  - To run **only the backend**, use:  `docker compose up backend`  
+  - To run **both** the frontend and backend, use:  `docker compose up`
+- **Step 5:** The backend server runs by default on port 3000. Make sure to specify this URL in your frontend configuration.
 
 ## Folder structure
 
@@ -77,10 +89,6 @@ Step to get the system running locally
     - `backend` : `cd backend && npm install`. additionally, backend also depends on python, which m
 - This can be done by installing each package individually. Or run `install.sh` script which will install all dependencies 
 
-
-## Overall Inference Pipeline 
-
-![Overview of inference pipeline](./frontend/static/images/overall_arch.svg)
 
 
 ## Development notes  : Git workflow 
