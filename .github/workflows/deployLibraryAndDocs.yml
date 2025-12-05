@@ -25,22 +25,22 @@ jobs:
       - name: Generate JSDoc documentation
         run: |
           cd core
-          npm run docs  # outputs to ../docs [web:1]
+          npm run docs
 
       - name: Build library
         run: |
-          node library/build-library.js  # creates index.json [web:21]
+          node library/build-library.js
 
       - name: Create deployment structure
         run: |
-          mkdir -p deploy/
-          cp -r docs/* deploy/
-          cp -r library/* deploy/library/ [web:2]
+          mkdir -p deploy
+          cp -r docs/. deploy/
+          cp -r library/. deploy/library/
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: deploy/ [web:8]
+          path: deploy
 
   deploy:
     needs: build
@@ -54,4 +54,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 [web:1]
+        uses: actions/deploy-pages@v4
