@@ -1,0 +1,39 @@
+{
+  "title": {
+    "en": "Detect Objects in Images",
+    "de": "Objekte in Bildern erkennen"
+  },
+  "active": true,
+  "type": "object_detection",
+  "model_input": ["image"],
+  "model_input_options": {
+    "normalize": false,
+    "addBatchDim": false
+  },
+  "model_output": "bounding_boxes",
+
+  "documentation": {
+    "en": "Special instructions"
+  },
+  "description": {
+    "en": "This pre-trained object detection model can identify and localize multiple objects within a single image. By uploading an image, the model will detect common objects such as people, cars, or animals and mark them with bounding boxes.",
+    "de": "Dieses vortrainierte Objekterkennungsmodell kann mehrere Objekte in einem einzelnen Bild identifizieren und lokalisieren. Nach dem Hochladen eines Bildes erkennt das Modell gängige Objekte wie Personen, Autos oder Tiere und markiert sie mit Begrenzungsrahmen."
+  },
+  "assets": {
+    "input": "input.png",
+    "output": "output.png",
+    "icon": "icon.png",
+    "model_folder": "model",
+    "demo_input_zip": "input_object_detection.zip",
+    "demo_output_zip": "demo_output_bagls.zip"
+  },
+
+  "project": {
+    "title": "Pre-trained models available in TensorFlow.js",
+    "website": "https://github.com/tensorflow/tfjs-models",
+    "about": {
+      "en": "A collection of ready-to-use machine learning models, optimized for TensorFlow.js and the browser. These models cover tasks such as object detection, image classification, and more.",
+      "de": "Eine Sammlung gebrauchsfertiger Machine-Learning-Modelle, optimiert für TensorFlow.js und die Ausführung im Browser. Die Modelle decken Aufgaben wie Objekterkennung, Bildklassifikation und weitere Anwendungsfälle ab."
+    }
+  }
+}

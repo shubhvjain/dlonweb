@@ -1,0 +1,41 @@
+{
+  "title": {
+    "en": "Segment the glottis in endoscopy data",
+    "de": "Glottis in Endoskopie-Daten segmentieren"
+  },
+  "active": true,
+  "type": "segment_image",
+  "model_input": ["image", "video"],
+  "model_input_options": {
+    "inputShape": [1, 256, 256, 3],
+    "dtype": "float32",
+    "normalize": true,
+    "addBatchDim": true,
+    "targetHeight": 256,
+    "targetWidth": 256
+  },
+  "model_output": "image_segmentation",
+  "documentation":{
+    "en":"Special instructions"
+  },
+  "description":{
+    "en":""
+  },
+  "assets": {
+    "input": "input.png",
+    "output": "output.png",
+    "icon": "icon.png",
+    "model_folder": "model",
+    "demo_input_zip":"demo_input_bagls.zip",
+    "demo_output_zip":"demo_output_bagls.zip"
+  },
+
+  "project": {
+    "title": "The BAGLS project: Benchmark for Automatic Glottis Segmentation",
+    "website": "https://www.bagls.org/",
+    "about": {
+      "en": "BAGLS is the first large-scale, publicly available dataset of endoscopic high-speed video with frame-wise segmentation annotations. Collected in collaboration with seven institutions, it comprises 59,250 annotated frames.",
+      "de": "BAGLS ist der erste groß angelegte, frei verfügbare Datensatz aus endoskopischen Hochgeschwindigkeitsvideos mit bildweisen Segmentierungsannotationen. Er wurde in Zusammenarbeit mit sieben Einrichtungen erstellt und umfasst 59.250 annotierte Frames."
+    }
+  }
+}
