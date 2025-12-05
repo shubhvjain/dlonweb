@@ -73,7 +73,7 @@ The project is divided into 3 main sub folders.
 
 ## Installation 
 
-Step to get the system running locally
+Step to get the system running locally. This is ideal for development of the app.
 
 - **Dependencies**
   - [Node.js](https://nodejs.org/en) (version 20 or above)
@@ -97,3 +97,11 @@ Step to get the system running locally
 - The current release version is on the `release` branch
 - For new development, create a feature branch from `main` and create a PR to `main`
 - To release a new version : create a PR from `main`  to `release`
+
+## Development notes : Build and publish docker images 
+
+There are 2 docker images in projects. One for the [frontend](./frontend.Dockerfile) and one for the [backend](./backend.Dockerfile). 
+
+For simplicity images are pre built and uploaded on docker hub. 
+
+The script `build-docker.sh`
