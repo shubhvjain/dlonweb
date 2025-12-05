@@ -29,7 +29,8 @@ jobs:
 
       - name: Build library
         run: |
-          node library/build-library.js
+          cd library
+          node build-library.js
 
       - name: Create deployment structure
         run: |
