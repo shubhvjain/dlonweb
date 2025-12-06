@@ -12,7 +12,7 @@ export const SYSTEM_SETTINGS = {
     name:"DL.web.js",
   },
   sections:{
-    server:false,  // show/hide server related pages
+    server:true,  // show/hide server related pages
     training:false, // show/hide the training page
     custom_inference:false, // toggle ability to use custom model inference
     inference_settings:false // toggle visibility of settings on the inference page
@@ -26,7 +26,8 @@ export const SYSTEM_SETTINGS = {
 const DEFAULT_USER_SETTINGS = {
   backendURL: 'http://localhost:3000',
   theme: 'dark',
-  language: 'en'
+  language: 'en',
+  library_server:"http://127.0.0.1:5500/library/index.json"
 };
 
 // ================= User Settings =================
